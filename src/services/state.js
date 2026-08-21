@@ -4,6 +4,8 @@
  * ============================================================================
  */
 
+import { Logger } from './logger.js';
+
 export const ADMIN_USER = {
   id_usuario: 1,
   email: 'franco.admin@systems.com',
@@ -41,6 +43,9 @@ class Store {
     };
     this.contactEmail = 'franco.soporte@systems.com';
     this.listeners = [];
+
+    // Log inicial de bienvenida
+    Logger.navigate('catalog');
   }
 
   save() {
@@ -83,9 +88,11 @@ class Store {
         };
         this.isAuthenticated = true;
         this.currentView = this.currentUser.rol_global === 'ADMIN' ? 'admin' : 'catalog';
+        Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Neon Cloud DB)');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       } else {
+        Logger.loginError(data.error || 'Credenciales inválidas', cleanEmail);
         throw new Error(data.error || 'Credenciales inválidas');
       }
     } catch (err) {
@@ -94,9 +101,11 @@ class Store {
         this.currentUser = ADMIN_USER;
         this.isAuthenticated = true;
         this.currentView = 'admin';
+        Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Local Fallback)');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       }
+      Logger.loginError(err.message, cleanEmail);
       throw new Error(err.message || 'Email o contraseña incorrectos');
     }
   }
@@ -106,6 +115,7 @@ class Store {
     this.isAuthenticated = false;
     this.isProfileMenuOpen = false;
     this.currentView = 'catalog';
+    Logger.logout();
     this.save();
     this.notify();
   }
@@ -113,6 +123,7 @@ class Store {
   startCheckout(sistemaId) {
     if (!this.isAuthenticated) {
       this.currentView = 'login';
+      Logger.navigate('login (Requerido para Checkout)');
       this.notify();
       window.showToast('Inicia sesión para poder adquirir este sistema', 'info');
       return;
@@ -127,11 +138,13 @@ class Store {
     };
     this.currentView = 'checkout';
     this.isProfileMenuOpen = false;
+    Logger.navigate('checkout');
     this.notify();
   }
 
   setCheckoutStep(step) {
     this.checkoutStep = step;
+    Logger.navigate(`checkout/paso-${step}`);
     this.notify();
   }
 
@@ -145,6 +158,7 @@ class Store {
     if ((view === 'perfil' || view === 'library' || view === 'admin') && !this.isAuthenticated) {
       this.currentView = 'login';
       this.isProfileMenuOpen = false;
+      Logger.navigate('login (Redirección por ruta protegida)');
       this.notify();
       window.showToast('Debes iniciar sesión para acceder a esta sección', 'info');
       return;
@@ -152,6 +166,7 @@ class Store {
 
     this.currentView = view;
     this.isProfileMenuOpen = false;
+    Logger.navigate(view);
     this.notify();
   }
 
@@ -178,6 +193,7 @@ class Store {
       activo: true
     };
     this.sistemas.unshift(newSystem);
+    Logger.createSystem(newSystem);
     this.notify();
     return newSystem;
   }
@@ -204,6 +220,7 @@ class Store {
     };
 
     this.licencias.unshift(newLicencia);
+    Logger.buySystem(newLicencia, system.titulo);
     this.notify();
     return newLicencia;
   }
@@ -215,15 +232,16 @@ class Store {
 
     lic.ultimo_acceso = new Date().toISOString();
     lic.en_uso = true;
-    this.notify();
 
     const ticket = 'tk_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    Logger.ssoLaunch(ticket, sys?.titulo || 'Sistema', lic.nombre_empresa);
+    this.notify();
     
     return {
       ticket,
       licencia: lic,
       sistema: sys,
-      redirect_url: `${sys.url_base}/sso/callback?ticket=${ticket}`
+      redirect_url: `${sys?.url_base || 'https://app.misistema.com'}/sso/callback?ticket=${ticket}`
     };
   }
 

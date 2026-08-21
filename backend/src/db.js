@@ -24,15 +24,24 @@ pool.on('error', (err) => {
  * @returns {Promise<any>} Objeto JSON ya deserializado
  */
 export async function callPackage(fnName, params = []) {
+  const start = Date.now();
   const placeholders = params.map((_, i) => `$${i + 1}`).join(', ');
   const sql = `SELECT ${fnName}(${placeholders}) AS result;`;
   
   try {
     const { rows } = await pool.query(sql, params);
-    if (!rows || rows.length === 0) return { ok: false, error: 'Sin respuesta de la base de datos' };
-    return rows[0].result;
+    const duration = Date.now() - start;
+    if (!rows || rows.length === 0) {
+      console.log(`[PL/pgSQL] ⚠️  ${fnName.padEnd(30)} -> Resultado: 404 VACÍO (${duration}ms)`);
+      return { ok: false, error: 'Sin respuesta de la base de datos' };
+    }
+    const res = rows[0].result;
+    const ok = res && res.ok !== false;
+    console.log(`[PL/pgSQL] ⚡ ${fnName.padEnd(30)} -> Resultado: ${ok ? '200 OK' : '400 ERROR'} (${duration}ms)`);
+    return res;
   } catch (error) {
-    console.error(`[DB Error en ${fnName}]:`, error.message);
+    const duration = Date.now() - start;
+    console.error(`[PL/pgSQL] ❌ ${fnName.padEnd(30)} -> Error: 500 (${duration}ms) | ${error.message}`);
     return { ok: false, error: error.message };
   }
 }

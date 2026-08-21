@@ -12,6 +12,27 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
 app.use(express.json());
 
+// Middleware de Logging Detallado de Métodos, Status y Tiempos
+app.use((req, res, next) => {
+  const start = Date.now();
+  const timestamp = new Date().toLocaleTimeString('es-ES', { hour12: false });
+  
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const statusCode = res.statusCode;
+    
+    // Formato de colores y estado
+    const statusText = statusCode >= 200 && statusCode < 300 ? 'OK' :
+                       statusCode === 400 ? 'BAD REQUEST' :
+                       statusCode === 401 ? 'UNAUTHORIZED' :
+                       statusCode === 404 ? 'NOT FOUND' : 'ERROR';
+
+    console.log(`[${timestamp}] [HTTP] ${req.method.padEnd(6)} ${req.originalUrl.padEnd(32)} -> Código: ${statusCode} ${statusText.padEnd(12)} (${duration}ms)`);
+  });
+
+  next();
+});
+
 // ----------------------------------------------------------------------------
 // 1. HEALTHCHECK
 // ----------------------------------------------------------------------------
