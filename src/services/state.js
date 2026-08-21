@@ -1,32 +1,30 @@
 /**
  * ============================================================================
- * GESTOR DE ESTADO REACTIVO GLOBAL (Systems State Store) - 100% LIMPIO
+ * GESTOR DE ESTADO REACTIVO GLOBAL (Systems State Store)
  * ============================================================================
  */
 
-// Único usuario registrado: Franco (SuperAdmin)
-export const INITIAL_USERS = [
-  {
-    id_usuario: 1,
-    email: 'franco.admin@systems.com',
-    nombre: 'Franco (SuperAdmin)',
-    avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FrancoAdmin',
-    rol_global: 'ADMIN',
-    telefono: '+54 9 11 0000-0000',
-    creado_en: new Date().toISOString()
-  }
-];
-
-export const INITIAL_SYSTEMS = [];
-export const INITIAL_LICENSES = [];
+export const ADMIN_USER = {
+  id_usuario: 1,
+  email: 'franco.admin@systems.com',
+  nombre: 'Franco (SuperAdmin)',
+  avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=FrancoAdmin',
+  rol_global: 'ADMIN',
+  telefono: '+54 9 11 0000-0000',
+  creado_en: new Date().toISOString()
+};
 
 class Store {
   constructor() {
-    this.currentUser = INITIAL_USERS[0]; // Franco (SuperAdmin)
-    this.currentView = 'catalog'; // 'catalog' | 'tienda' | 'manuales' | 'contacto' | 'perfil' | 'library' | 'admin' | 'simulator' | 'checkout'
+    const savedUser = localStorage.getItem('systems_current_user');
+    this.currentUser = savedUser ? JSON.parse(savedUser) : ADMIN_USER;
+    this.isAuthenticated = Boolean(savedUser);
+    
+    // Inicia en catálogo por defecto
+    this.currentView = 'catalog'; // 'catalog' | 'tienda' | 'manuales' | 'contacto' | 'perfil' | 'library' | 'admin' | 'simulator' | 'checkout' | 'login'
     this.isProfileMenuOpen = false;
     
-    // Cargar del storage o array limpio
+    // Cargar del storage
     const storedSystems = localStorage.getItem('systems_catalog_v2');
     const storedLicenses = localStorage.getItem('systems_licenses_v2');
 
@@ -46,6 +44,11 @@ class Store {
   }
 
   save() {
+    if (this.currentUser && this.isAuthenticated) {
+      localStorage.setItem('systems_current_user', JSON.stringify(this.currentUser));
+    } else {
+      localStorage.removeItem('systems_current_user');
+    }
     localStorage.setItem('systems_catalog_v2', JSON.stringify(this.sistemas));
     localStorage.setItem('systems_licenses_v2', JSON.stringify(this.licencias));
   }
@@ -62,7 +65,59 @@ class Store {
     this.listeners.forEach(fn => fn(this));
   }
 
+  async login(email, password) {
+    const cleanEmail = email.toLowerCase().trim();
+
+    // 1. Intentar validar contra el backend Node.js en vivo si está disponible
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/login-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, password })
+      });
+      const data = await res.json();
+      if (data.ok && data.usuario) {
+        this.currentUser = {
+          ...data.usuario,
+          telefono: '+54 9 11 0000-0000'
+        };
+        this.isAuthenticated = true;
+        this.currentView = this.currentUser.rol_global === 'ADMIN' ? 'admin' : 'catalog';
+        this.notify();
+        return { ok: true, usuario: this.currentUser };
+      } else {
+        throw new Error(data.error || 'Credenciales inválidas');
+      }
+    } catch (err) {
+      // 2. Fallback de contingencia local si el backend no está corriendo en el puerto 3000
+      if (cleanEmail === 'franco.admin@systems.com' && password === 'FrancoAdmin2026!') {
+        this.currentUser = ADMIN_USER;
+        this.isAuthenticated = true;
+        this.currentView = 'admin';
+        this.notify();
+        return { ok: true, usuario: this.currentUser };
+      }
+      throw new Error(err.message || 'Email o contraseña incorrectos');
+    }
+  }
+
+  logout() {
+    this.currentUser = null;
+    this.isAuthenticated = false;
+    this.isProfileMenuOpen = false;
+    this.currentView = 'catalog';
+    this.save();
+    this.notify();
+  }
+
   startCheckout(sistemaId) {
+    if (!this.isAuthenticated) {
+      this.currentView = 'login';
+      this.notify();
+      window.showToast('Inicia sesión para poder adquirir este sistema', 'info');
+      return;
+    }
+
     this.selectedCheckoutSystemId = Number(sistemaId);
     this.checkoutStep = 1;
     this.checkoutData = {
@@ -85,13 +140,16 @@ class Store {
     this.notify();
   }
 
-  setCurrentUser(user) {
-    this.currentUser = user;
-    this.isProfileMenuOpen = false;
-    this.notify();
-  }
-
   setCurrentView(view) {
+    // Si intenta entrar a perfil, library o admin sin sesión, mandar al login
+    if ((view === 'perfil' || view === 'library' || view === 'admin') && !this.isAuthenticated) {
+      this.currentView = 'login';
+      this.isProfileMenuOpen = false;
+      this.notify();
+      window.showToast('Debes iniciar sesión para acceder a esta sección', 'info');
+      return;
+    }
+
     this.currentView = view;
     this.isProfileMenuOpen = false;
     this.notify();
@@ -99,12 +157,6 @@ class Store {
 
   toggleProfileMenu(force) {
     this.isProfileMenuOpen = force !== undefined ? force : !this.isProfileMenuOpen;
-    this.notify();
-  }
-
-  logout() {
-    this.isProfileMenuOpen = false;
-    this.currentView = 'catalog';
     this.notify();
   }
 
@@ -131,6 +183,10 @@ class Store {
   }
 
   buySystem({ sistemaId, nombreEmpresa, slugEmpresa, metodoPago }) {
+    if (!this.isAuthenticated || !this.currentUser) {
+      throw new Error('Debes estar autenticado para comprar');
+    }
+
     const system = this.sistemas.find(s => s.id_sistema === Number(sistemaId));
     if (!system) throw new Error('Sistema no encontrado');
 
@@ -173,7 +229,7 @@ class Store {
 
   getBuyersList() {
     return this.licencias.map(l => {
-      const user = INITIAL_USERS.find(u => u.id_usuario === l.id_usuario) || {
+      const user = this.currentUser || {
         nombre: 'Cliente',
         email: 'cliente@empresa.com',
         avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Client'

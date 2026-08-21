@@ -1,5 +1,5 @@
 import './styles/main.css';
-import { store, INITIAL_USERS } from './services/state.js';
+import { store } from './services/state.js';
 import { renderNavbar } from './components/Navbar.js';
 import { renderHeroSection } from './components/HeroSection.js';
 import { renderCatalogView } from './components/CatalogView.js';
@@ -11,6 +11,7 @@ import { renderUserLibraryView } from './components/UserLibraryView.js';
 import { renderAdminCompradoresView } from './components/AdminCompradoresView.js';
 import { renderSecondarySystemSimulator } from './components/SecondarySystemSimulator.js';
 import { renderCheckoutView } from './components/CheckoutView.js';
+import { renderLoginView } from './components/LoginView.js';
 import './components/Toast.js';
 
 // Enrutador y renderizador reactivo
@@ -30,6 +31,10 @@ function renderApp() {
       ${view === 'catalog' ? `
         ${renderHeroSection()}
         ${renderCatalogView()}
+      ` : ''}
+
+      ${view === 'login' ? `
+        ${renderLoginView()}
       ` : ''}
 
       ${view === 'checkout' ? `
@@ -107,14 +112,6 @@ window.navigate = (viewName) => {
 
 window.startCheckout = (sistemaId) => {
   store.startCheckout(sistemaId);
-};
-
-window.switchUser = (userId) => {
-  const found = INITIAL_USERS.find(u => u.id_usuario === Number(userId));
-  if (found) {
-    store.setCurrentUser(found);
-    window.showToast(`Sesión cambiada a: ${found.nombre} (${found.rol_global})`, 'info');
-  }
 };
 
 window.launchSSO = (licenciaId) => {
