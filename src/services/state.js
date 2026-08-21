@@ -17,10 +17,10 @@ export const ADMIN_USER = {
 class Store {
   constructor() {
     const savedUser = localStorage.getItem('systems_current_user');
-    this.currentUser = savedUser ? JSON.parse(savedUser) : ADMIN_USER;
-    this.isAuthenticated = Boolean(savedUser);
+    this.currentUser = savedUser ? JSON.parse(savedUser) : null;
+    this.isAuthenticated = Boolean(this.currentUser);
     
-    // Inicia en catálogo por defecto
+    // Inicia en catálogo (inicio) por defecto
     this.currentView = 'catalog'; // 'catalog' | 'tienda' | 'manuales' | 'contacto' | 'perfil' | 'library' | 'admin' | 'simulator' | 'checkout' | 'login'
     this.isProfileMenuOpen = false;
     

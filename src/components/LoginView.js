@@ -30,8 +30,8 @@ export function renderLoginView() {
                 type="email" 
                 id="login-email" 
                 class="form-input" 
-                placeholder="tu@email.com" 
-                value="franco.admin@systems.com"
+                placeholder="ejemplo@correo.com" 
+                value=""
                 required 
                 autofocus
               />
@@ -46,7 +46,7 @@ export function renderLoginView() {
                 id="login-password" 
                 class="form-input" 
                 placeholder="••••••••••••" 
-                value="FrancoAdmin2026!"
+                value=""
                 required 
                 style="padding-right: 2.5rem;"
               />
