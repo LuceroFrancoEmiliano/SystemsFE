@@ -39,6 +39,20 @@ app.post('/api/auth/google', async (req, res) => {
   res.status(result.ok ? 200 : 400).json(result);
 });
 
+// Login con Email y Contraseña directa
+app.post('/api/auth/login-password', async (req, res) => {
+  const { email, password } = req.body;
+  const result = await callPackage('pkg_auth.login_password', [email, password]);
+  res.status(result.ok ? 200 : 401).json(result);
+});
+
+// Asignar o cambiar contraseña de usuario
+app.post('/api/auth/set-password', async (req, res) => {
+  const { id_usuario, new_password } = req.body;
+  const result = await callPackage('pkg_auth.set_password', [id_usuario, new_password]);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
 // Obtener perfil de usuario
 app.get('/api/auth/perfil/:id_usuario', async (req, res) => {
   const result = await callPackage('pkg_auth.get_perfil', [req.params.id_usuario]);

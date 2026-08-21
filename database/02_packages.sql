@@ -74,6 +74,83 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+-- 2. Login con Email y Contraseña (Bcrypt seguro con pgcrypto)
+CREATE OR REPLACE FUNCTION pkg_auth.login_password(
+    p_email VARCHAR,
+    p_password VARCHAR
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user usuarios%ROWTYPE;
+BEGIN
+    IF p_email IS NULL OR p_password IS NULL THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Email y contraseña son requeridos');
+    END IF;
+
+    SELECT * INTO v_user FROM usuarios 
+    WHERE email = LOWER(TRIM(p_email)) AND activo = TRUE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Credenciales no válidas');
+    END IF;
+
+    IF v_user.password_hash IS NULL OR v_user.password_hash = '' THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Esta cuenta no tiene contraseña configurada. Inicia sesión con Google o asigna una contraseña.');
+    END IF;
+
+    -- Validar hash con crypt de pgcrypto
+    IF v_user.password_hash <> crypt(p_password, v_user.password_hash) THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Contraseña incorrecta');
+    END IF;
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'usuario', jsonb_build_object(
+            'id_usuario', v_user.id_usuario,
+            'email', v_user.email,
+            'nombre', v_user.nombre,
+            'avatar_url', v_user.avatar_url,
+            'rol_global', v_user.rol_global
+        )
+    );
+END;
+$$;
+
+-- 3. Asignar o Cambiar Contraseña de Usuario
+CREATE OR REPLACE FUNCTION pkg_auth.set_password(
+    p_id_usuario BIGINT,
+    p_new_password VARCHAR
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_hash TEXT;
+BEGIN
+    IF LENGTH(p_new_password) < 6 THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'La contraseña debe tener al menos 6 caracteres');
+    END IF;
+
+    -- Hashear con algoritmo Blowfish (Bcrypt) de 10 rondas
+    v_hash := crypt(p_new_password, gen_salt('bf', 10));
+
+    UPDATE usuarios 
+    SET password_hash = v_hash,
+        actualizado_en = CURRENT_TIMESTAMP
+    WHERE id_usuario = p_id_usuario;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Usuario no encontrado');
+    END IF;
+
+    RETURN jsonb_build_object('ok', true, 'mensaje', 'Contraseña actualizada con éxito');
+END;
+$$;
+
 -- 2. Obtener Perfil del Usuario
 CREATE OR REPLACE FUNCTION pkg_auth.get_perfil(p_id_usuario BIGINT)
 RETURNS JSONB
