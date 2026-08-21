@@ -4,8 +4,6 @@
  * ============================================================================
  */
 
-import { Logger } from './logger.js';
-
 export const ADMIN_USER = {
   id_usuario: 1,
   email: 'franco.admin@systems.com',
@@ -44,8 +42,8 @@ class Store {
     this.contactEmail = 'franco.soporte@systems.com';
     this.listeners = [];
 
-    // Log inicial de bienvenida
-    Logger.navigate('catalog');
+    // Notificar vista inicial al backend
+    this.notifyServerView('catalog');
   }
 
   save() {
@@ -77,7 +75,7 @@ class Store {
   async login(email, password) {
     const cleanEmail = email.toLowerCase().trim();
 
-    // 1. Intentar validar contra el backend Node.js en vivo si está disponible
+    // 1. Validar contra el backend Node.js en vivo (conectado a Neon DB)
     try {
       const res = await fetch('http://localhost:3000/api/auth/login-password', {
         method: 'POST',
@@ -92,12 +90,10 @@ class Store {
         };
         this.isAuthenticated = true;
         this.currentView = this.currentUser.rol_global === 'ADMIN' ? 'admin' : 'catalog';
-        Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Neon Cloud DB)');
         this.notifyServerView('admin-login');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       } else {
-        Logger.loginError(data.error || 'Credenciales inválidas', cleanEmail);
         throw new Error(data.error || 'Credenciales inválidas');
       }
     } catch (err) {
@@ -106,12 +102,10 @@ class Store {
         this.currentUser = ADMIN_USER;
         this.isAuthenticated = true;
         this.currentView = 'admin';
-        Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Local Fallback)');
         this.notifyServerView('admin-login');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       }
-      Logger.loginError(err.message, cleanEmail);
       throw new Error(err.message || 'Email o contraseña incorrectos');
     }
   }
@@ -127,7 +121,6 @@ class Store {
     this.isAuthenticated = false;
     this.isProfileMenuOpen = false;
     this.currentView = 'catalog';
-    Logger.logout();
     this.notifyServerView('catalog');
     this.save();
     this.notify();
@@ -136,7 +129,6 @@ class Store {
   startCheckout(sistemaId) {
     if (!this.isAuthenticated) {
       this.currentView = 'login';
-      Logger.navigate('login (Requerido para Checkout)');
       this.notifyServerView('login');
       this.notify();
       window.showToast('Inicia sesión para poder adquirir este sistema', 'info');
@@ -152,14 +144,12 @@ class Store {
     };
     this.currentView = 'checkout';
     this.isProfileMenuOpen = false;
-    Logger.navigate('checkout');
     this.notifyServerView('checkout');
     this.notify();
   }
 
   setCheckoutStep(step) {
     this.checkoutStep = step;
-    Logger.navigate(`checkout/paso-${step}`);
     this.notifyServerView(`checkout-paso-${step}`);
     this.notify();
   }
@@ -174,7 +164,6 @@ class Store {
     if ((view === 'perfil' || view === 'library' || view === 'admin') && !this.isAuthenticated) {
       this.currentView = 'login';
       this.isProfileMenuOpen = false;
-      Logger.navigate('login (Redirección por ruta protegida)');
       this.notifyServerView('login');
       this.notify();
       window.showToast('Debes iniciar sesión para acceder a esta sección', 'info');
@@ -183,7 +172,6 @@ class Store {
 
     this.currentView = view;
     this.isProfileMenuOpen = false;
-    Logger.navigate(view);
     this.notifyServerView(view);
     this.notify();
   }
@@ -222,7 +210,6 @@ class Store {
     }).catch(() => {});
 
     this.sistemas.unshift(newSystem);
-    Logger.createSystem(newSystem);
     this.notify();
     return newSystem;
   }
@@ -263,7 +250,6 @@ class Store {
     }).catch(() => {});
 
     this.licencias.unshift(newLicencia);
-    Logger.buySystem(newLicencia, system.titulo);
     this.notify();
     return newLicencia;
   }
@@ -288,7 +274,6 @@ class Store {
       })
     }).catch(() => {});
 
-    Logger.ssoLaunch(ticket, sys?.titulo || 'Sistema', lic.nombre_empresa);
     this.notify();
     
     return {
