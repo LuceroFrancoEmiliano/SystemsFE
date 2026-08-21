@@ -2,7 +2,7 @@ import { store } from '../services/state.js';
 
 export function renderCatalogView() {
   const sistemas = store.sistemas.filter(s => s.activo);
-  const isAdmin = store.currentUser.rol_global === 'ADMIN';
+  const isAdmin = store.currentUser?.rol_global === 'ADMIN';
 
   return `
     <div class="container animate-fade-in">

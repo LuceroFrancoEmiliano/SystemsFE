@@ -1,8 +1,23 @@
 import { store } from '../services/state.js';
 
 export function renderCheckoutView() {
-  const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
   const user = store.currentUser;
+  if (!user) {
+    return `
+      <div class="container animate-fade-in" style="max-width: 600px; margin: 3rem auto; text-align: center;">
+        <div style="background: #fff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 3rem 2rem; box-shadow: var(--shadow-md);">
+          <i data-lucide="lock" style="width: 48px; height: 48px; color: var(--primary); margin-bottom: 1rem;"></i>
+          <h2 style="font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem;">Inicia sesión para continuar la compra</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Para registrar la empresa a tu nombre y configurar tu subdominio privado.</p>
+          <button class="btn btn-primary" onclick="window.navigate('login')">
+            <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
+            Iniciar Sesión
+          </button>
+        </div>
+      </div>
+    `;
+  }
+  const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
   const step = store.checkoutStep;
   const data = store.checkoutData;
 
