@@ -1,4 +1,4 @@
-import { store, INITIAL_USERS } from '../services/state.js';
+import { store } from '../services/state.js';
 
 export function renderNavbar() {
   const user = store.currentUser;
@@ -47,9 +47,9 @@ export function renderNavbar() {
             </button>
           </li>
           <li>
-            <button class="nav-link-btn ${view === 'simulator' ? 'active' : ''}" onclick="window.navigate('simulator')">
-              <i data-lucide="laptop" style="width: 16px; height: 16px; color: var(--accent-cyan);"></i>
-              Simulador SSO
+            <button class="nav-link-btn ${view === 'admin' ? 'active' : ''}" onclick="window.navigate('admin')">
+              <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #e11d48;"></i>
+              Panel SuperAdmin
             </button>
           </li>
         </ul>
@@ -63,8 +63,8 @@ export function renderNavbar() {
             </div>
             <div style="text-align: left; line-height: 1.15;" class="hidden-mobile">
               <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block;">${user.nombre}</span>
-              <span style="font-size: 0.7rem; color: ${isAdmin ? '#e11d48' : 'var(--accent-cyan)'}; font-weight: 600;">
-                ${isAdmin ? '👑 SuperAdmin' : '💼 Comprador'}
+              <span style="font-size: 0.7rem; color: #e11d48; font-weight: 600;">
+                👑 SuperAdmin
               </span>
             </div>
             <i data-lucide="chevron-down" style="width: 14px; height: 14px; color: var(--text-dim);"></i>
@@ -72,14 +72,14 @@ export function renderNavbar() {
 
           <!-- Menú Desplegable del Perfil -->
           ${isMenuOpen ? `
-            <div class="profile-dropdown-menu animate-scale-up" style="position: absolute; right: 0; top: calc(100% + 8px); width: 260px; background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 150; padding: 0.6rem 0; overflow: hidden;">
+            <div class="profile-dropdown-menu animate-scale-up" style="position: absolute; right: 0; top: calc(100% + 8px); width: 250px; background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 150; padding: 0.6rem 0; overflow: hidden;">
               
               <!-- Info del Usuario -->
               <div style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; background: #f8fafc; margin-bottom: 0.4rem;">
                 <strong style="display: block; font-size: 0.88rem; color: var(--text-main);">${user.nombre}</strong>
                 <span style="font-size: 0.75rem; color: var(--text-dim); display: block; word-break: break-all;">${user.email}</span>
-                <span class="badge ${isAdmin ? 'badge-admin' : 'badge-primary'}" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 0.15rem 0.5rem;">
-                  ${isAdmin ? 'Administrador General' : 'Cuenta de Comprador'}
+                <span class="badge badge-admin" style="font-size: 0.68rem; margin-top: 0.4rem; padding: 0.15rem 0.5rem;">
+                  Administrador General
                 </span>
               </div>
 
@@ -89,32 +89,16 @@ export function renderNavbar() {
                 <span>Mi Perfil</span>
               </button>
 
+              <button class="dropdown-item-btn" onclick="window.navigate('admin')">
+                <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #e11d48;"></i>
+                <span>Panel SuperAdmin</span>
+              </button>
+
               <button class="dropdown-item-btn" onclick="window.navigate('library')">
                 <i data-lucide="folder-check" style="width: 16px; height: 16px; color: var(--accent-cyan);"></i>
                 <span>Mis Sistemas</span>
                 <span class="badge badge-primary" style="margin-left: auto; font-size: 0.65rem; padding: 0.1rem 0.45rem;">${misLicenciasCount}</span>
               </button>
-
-              ${isAdmin ? `
-                <button class="dropdown-item-btn" onclick="window.navigate('admin')">
-                  <i data-lucide="shield-check" style="width: 16px; height: 16px; color: #e11d48;"></i>
-                  <span>Panel SuperAdmin</span>
-                </button>
-              ` : ''}
-
-              <div style="border-top: 1px solid #f1f5f9; margin: 0.4rem 0;"></div>
-
-              <!-- Selector Rápido de Cuenta Demo -->
-              <div style="padding: 0.35rem 1rem;">
-                <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-dim); text-transform: uppercase; display: block; margin-bottom: 0.3rem;">Cambiar Cuenta (Demo):</span>
-                <select class="form-input" style="padding: 0.35rem 0.5rem; font-size: 0.75rem;" onchange="window.switchUser(this.value)">
-                  ${INITIAL_USERS.map(u => `
-                    <option value="${u.id_usuario}" ${u.id_usuario === user.id_usuario ? 'selected' : ''}>
-                      ${u.nombre} (${u.rol_global})
-                    </option>
-                  `).join('')}
-                </select>
-              </div>
 
               <div style="border-top: 1px solid #f1f5f9; margin: 0.4rem 0;"></div>
 

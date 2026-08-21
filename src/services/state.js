@@ -4,7 +4,7 @@
  * ============================================================================
  */
 
-// Cuentas base
+// Único usuario registrado: Franco (SuperAdmin)
 export const INITIAL_USERS = [
   {
     id_usuario: 1,
@@ -14,15 +14,6 @@ export const INITIAL_USERS = [
     rol_global: 'ADMIN',
     telefono: '+54 9 11 0000-0000',
     creado_en: new Date().toISOString()
-  },
-  {
-    id_usuario: 2,
-    email: 'cliente@empresa.com',
-    nombre: 'Cliente Comprador',
-    avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ClienteDemo',
-    rol_global: 'USER',
-    telefono: '+54 9 11 1234-5678',
-    creado_en: new Date().toISOString()
   }
 ];
 
@@ -31,7 +22,7 @@ export const INITIAL_LICENSES = [];
 
 class Store {
   constructor() {
-    this.currentUser = INITIAL_USERS[0]; // Inicia por defecto como Franco (SuperAdmin)
+    this.currentUser = INITIAL_USERS[0]; // Franco (SuperAdmin)
     this.currentView = 'catalog'; // 'catalog' | 'tienda' | 'manuales' | 'contacto' | 'perfil' | 'library' | 'admin' | 'simulator' | 'checkout'
     this.isProfileMenuOpen = false;
     
@@ -97,11 +88,6 @@ class Store {
   setCurrentUser(user) {
     this.currentUser = user;
     this.isProfileMenuOpen = false;
-    if (user.rol_global === 'ADMIN' && this.currentView === 'library') {
-      this.currentView = 'admin';
-    } else if (user.rol_global === 'USER' && this.currentView === 'admin') {
-      this.currentView = 'catalog';
-    }
     this.notify();
   }
 
@@ -117,7 +103,6 @@ class Store {
   }
 
   logout() {
-    this.currentUser = INITIAL_USERS[1];
     this.isProfileMenuOpen = false;
     this.currentView = 'catalog';
     this.notify();
