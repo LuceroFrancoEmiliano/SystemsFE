@@ -67,17 +67,21 @@ app.post('/api/auth/login-password', async (req, res) => {
   res.status(result.ok ? 200 : 401).json(result);
 });
 
-// Asignar o cambiar contraseña de usuario
-app.post('/api/auth/set-password', async (req, res) => {
-  const { id_usuario, new_password } = req.body;
-  const result = await callPackage('pkg_auth.set_password', [id_usuario, new_password]);
-  res.status(result.ok ? 200 : 400).json(result);
+// Logout
+app.post('/api/auth/logout', (req, res) => {
+  const { email } = req.body || {};
+  res.status(200).json({ ok: true, mensaje: 'Sesión finalizada' });
 });
 
-// Obtener perfil de usuario
-app.get('/api/auth/perfil/:id_usuario', async (req, res) => {
-  const result = await callPackage('pkg_auth.get_perfil', [req.params.id_usuario]);
-  res.status(result.ok ? 200 : 404).json(result);
+// Registrar y responder vista de navegación
+app.get('/api/views/:viewName', (req, res) => {
+  const { viewName } = req.params;
+  res.status(200).json({ ok: true, vista: viewName, timestamp: new Date().toISOString() });
+});
+
+// Listar manuales
+app.get('/api/manuales', (req, res) => {
+  res.status(200).json({ ok: true, manuales: [] });
 });
 
 // ----------------------------------------------------------------------------

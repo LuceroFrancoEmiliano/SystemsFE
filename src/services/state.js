@@ -70,6 +70,10 @@ class Store {
     this.listeners.forEach(fn => fn(this));
   }
 
+  notifyServerView(view) {
+    fetch(`http://localhost:3000/api/views/${view}`).catch(() => {});
+  }
+
   async login(email, password) {
     const cleanEmail = email.toLowerCase().trim();
 
@@ -89,6 +93,7 @@ class Store {
         this.isAuthenticated = true;
         this.currentView = this.currentUser.rol_global === 'ADMIN' ? 'admin' : 'catalog';
         Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Neon Cloud DB)');
+        this.notifyServerView('admin-login');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       } else {
@@ -102,6 +107,7 @@ class Store {
         this.isAuthenticated = true;
         this.currentView = 'admin';
         Logger.loginSuccess(this.currentUser, 'POST /api/auth/login-password (Local Fallback)');
+        this.notifyServerView('admin-login');
         this.notify();
         return { ok: true, usuario: this.currentUser };
       }
@@ -111,11 +117,18 @@ class Store {
   }
 
   logout() {
+    fetch('http://localhost:3000/api/auth/logout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: this.currentUser?.email })
+    }).catch(() => {});
+
     this.currentUser = null;
     this.isAuthenticated = false;
     this.isProfileMenuOpen = false;
     this.currentView = 'catalog';
     Logger.logout();
+    this.notifyServerView('catalog');
     this.save();
     this.notify();
   }
@@ -124,6 +137,7 @@ class Store {
     if (!this.isAuthenticated) {
       this.currentView = 'login';
       Logger.navigate('login (Requerido para Checkout)');
+      this.notifyServerView('login');
       this.notify();
       window.showToast('Inicia sesión para poder adquirir este sistema', 'info');
       return;
@@ -139,12 +153,14 @@ class Store {
     this.currentView = 'checkout';
     this.isProfileMenuOpen = false;
     Logger.navigate('checkout');
+    this.notifyServerView('checkout');
     this.notify();
   }
 
   setCheckoutStep(step) {
     this.checkoutStep = step;
     Logger.navigate(`checkout/paso-${step}`);
+    this.notifyServerView(`checkout-paso-${step}`);
     this.notify();
   }
 
@@ -159,6 +175,7 @@ class Store {
       this.currentView = 'login';
       this.isProfileMenuOpen = false;
       Logger.navigate('login (Redirección por ruta protegida)');
+      this.notifyServerView('login');
       this.notify();
       window.showToast('Debes iniciar sesión para acceder a esta sección', 'info');
       return;
@@ -167,6 +184,7 @@ class Store {
     this.currentView = view;
     this.isProfileMenuOpen = false;
     Logger.navigate(view);
+    this.notifyServerView(view);
     this.notify();
   }
 
@@ -192,6 +210,17 @@ class Store {
       manual_resumen: 'Manual de operaciones y configuración del sistema.',
       activo: true
     };
+
+    // Notificar al backend
+    fetch('http://localhost:3000/api/admin/sistemas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        admin_id: this.currentUser?.id_usuario || 1,
+        ...newSystem
+      })
+    }).catch(() => {});
+
     this.sistemas.unshift(newSystem);
     Logger.createSystem(newSystem);
     this.notify();
@@ -219,6 +248,20 @@ class Store {
       en_uso: true
     };
 
+    // Notificar al backend
+    fetch('http://localhost:3000/api/ventas/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: this.currentUser.id_usuario,
+        id_sistema: system.id_sistema,
+        nombre_empresa: nombreEmpresa,
+        slug_empresa: slugEmpresa,
+        metodo_pago: metodoPago,
+        monto: system.precio
+      })
+    }).catch(() => {});
+
     this.licencias.unshift(newLicencia);
     Logger.buySystem(newLicencia, system.titulo);
     this.notify();
@@ -234,6 +277,17 @@ class Store {
     lic.en_uso = true;
 
     const ticket = 'tk_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    
+    // Notificar al backend
+    fetch('http://localhost:3000/api/sso/generate-ticket', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: this.currentUser?.id_usuario || 1,
+        id_licencia: lic.id_licencia
+      })
+    }).catch(() => {});
+
     Logger.ssoLaunch(ticket, sys?.titulo || 'Sistema', lic.nombre_empresa);
     this.notify();
     
