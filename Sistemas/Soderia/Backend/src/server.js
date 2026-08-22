@@ -166,24 +166,72 @@ app.post('/api/repartos/cerrar', async (req, res) => {
   res.status(result.ok ? 200 : 400).json(result);
 });
 
+import { WhatsAppBotEngine } from './services/whatsappBot.js';
+
 // ----------------------------------------------------------------------------
-// 5. BOT DE WHATSAPP & PEDIDOS AUTOMATIZADOS
+// 5. BOT DE WHATSAPP AUTOMÁTICO (RECIBE MENSAJES REALES DE CLIENTES)
 // ----------------------------------------------------------------------------
 app.post('/api/whatsapp/webhook', async (req, res) => {
-  const { id_empresa, id_cliente, mensaje, sifones, bidones, monto, estado, respuesta } = req.body;
-  
-  const result = await callPackage('pkg_sod_whatsapp.registrar_pedido_bot', [
-    id_empresa || 1,
-    id_cliente,
-    mensaje,
-    sifones || 0,
-    bidones || 0,
-    monto || 0,
-    estado || 'CONFIRMADO',
-    respuesta || ''
-  ]);
+  const phone = req.body.From || req.body.phone || req.body.telefono || '';
+  const messageText = req.body.Body || req.body.message || req.body.mensaje || '';
+  const id_empresa = req.body.id_empresa || 1;
 
-  res.status(result.ok ? 200 : 400).json(result);
+  const cleanPhone = phone.replace(/[^0-9]/g, '');
+
+  console.log(`[WHATSAPP BOT] 📩 Mensaje entrante de ${phone}: "${messageText}"`);
+
+  // 1. Buscar cliente por número de teléfono
+  let cliente = null;
+  try {
+    const cliRes = await query('SELECT * FROM sod_clientes WHERE id_empresa = $1 AND REPLACE(telefono, \'+\', \'\') LIKE $2 LIMIT 1', [
+      id_empresa,
+      `%${cleanPhone.slice(-8)}%`
+    ]);
+    if (cliRes.rows.length > 0) {
+      cliente = cliRes.rows[0];
+    }
+  } catch (e) {}
+
+  // Si no se encontró el cliente por teléfono, usar un objeto temporal
+  if (!cliente) {
+    cliente = {
+      id_cliente: 1,
+      nombre: 'Cliente WhatsApp',
+      telefono: phone,
+      saldo_deudor: 0,
+      sifones_prestados: 6,
+      bidones_prestados: 0
+    };
+  }
+
+  // 2. Interpretar mensaje con el Bot de Lenguaje Natural
+  const parsed = WhatsAppBotEngine.parseIncomingMessage(messageText, cliente);
+
+  // 3. Registrar el pedido en la base de datos de Neon
+  try {
+    await callPackage('pkg_sod_whatsapp.registrar_pedido_bot', [
+      id_empresa,
+      cliente.id_cliente,
+      messageText,
+      parsed.sifones || 0,
+      parsed.bidones || 0,
+      parsed.monto || 0,
+      parsed.intent || 'CONFIRMADO',
+      parsed.respuesta || ''
+    ]);
+  } catch (e) {}
+
+  console.log(`[WHATSAPP BOT] 🤖 Interpretado: ${parsed.sifones} sifones, ${parsed.bidones} bidones ($${parsed.monto}). Estado: ${parsed.intent}`);
+
+  // Responder a la API de WhatsApp / Webhook
+  res.json({
+    success: true,
+    intent: parsed.intent,
+    sifones_solicitados: parsed.sifones,
+    bidones_solicitados: parsed.bidones,
+    monto_estimado: parsed.monto,
+    auto_reply: parsed.respuesta
+  });
 });
 
 // Iniciar Servidor

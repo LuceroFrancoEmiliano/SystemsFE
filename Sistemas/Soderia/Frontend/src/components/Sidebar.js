@@ -53,11 +53,6 @@ export function renderSidebar(isMobileOpen = false) {
             Stock & Planta
           </button>
 
-          <button class="sidebar-btn ${view === 'whatsapp-bot' ? 'active' : ''}" onclick="window.navigateSod('whatsapp-bot')">
-            <i data-lucide="bot" style="width: 18px; height: 18px; color: #16a34a;"></i>
-            Bot de WhatsApp (Auto)
-          </button>
-
           <button class="sidebar-btn ${view === 'empleados' ? 'active' : ''}" onclick="window.navigateSod('empleados')">
             <i data-lucide="user-check" style="width: 18px; height: 18px;"></i>
             Mis Choferes & Planta

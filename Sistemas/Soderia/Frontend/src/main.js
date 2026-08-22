@@ -8,7 +8,6 @@ import { renderStockView } from './components/StockView.js';
 import { renderStaffView } from './components/StaffView.js';
 import { renderDriverMobileView } from './components/DriverMobileView.js';
 import { renderLoginView } from './components/LoginView.js';
-import { renderWhatsAppBotView } from './components/WhatsAppBotView.js';
 import { offlineService } from './services/offlineSync.js';
 import './components/Toast.js';
 
@@ -35,7 +34,7 @@ function renderApp() {
 
   // Protección de rutas por Rol
   let activeView = view;
-  if (isChofer && (view === 'dashboard' || view === 'clientes' || view === 'stock' || view === 'empleados' || view === 'whatsapp-bot')) {
+  if (isChofer && (view === 'dashboard' || view === 'clientes' || view === 'stock' || view === 'empleados')) {
     activeView = 'chofer-movil';
   }
 
@@ -80,7 +79,6 @@ function renderApp() {
           ${activeView === 'reparto' ? renderDeliveryView() : ''}
           ${activeView === 'chofer-movil' ? renderDriverMobileView() : ''}
           ${activeView === 'stock' ? renderStockView() : ''}
-          ${activeView === 'whatsapp-bot' ? renderWhatsAppBotView() : ''}
           ${activeView === 'empleados' ? renderStaffView() : ''}
         </main>
       </div>
