@@ -4,6 +4,7 @@ import { WhatsAppService } from '../services/whatsapp.js';
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 let selectedClientId = null;
+let isOptimizingGPS = false;
 let currentDelivery = {
   sifones_ent: 6,
   sifones_dev: 6,
@@ -32,8 +33,8 @@ export function renderDriverMobileView() {
   return `
     <div class="animate-fade-in" style="max-width: 480px; margin: 0 auto 3rem; padding: 0.25rem;">
       
-      <!-- Selector de Día de Reparto Automático -->
-      <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.6rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
+      <!-- Selector de Día de Reparto & Botón de Optimizar GPS -->
+      <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.75rem; margin-bottom: 1rem; box-shadow: var(--shadow-sm);">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
           <span style="font-size: 0.75rem; text-transform: uppercase; font-weight: 800; color: var(--text-dim);">
             📅 Día de Reparto:
@@ -43,7 +44,7 @@ export function renderDriverMobileView() {
           </span>
         </div>
 
-        <div style="display: flex; gap: 0.35rem; overflow-x: auto; padding-bottom: 0.2rem;">
+        <div style="display: flex; gap: 0.35rem; overflow-x: auto; padding-bottom: 0.4rem; margin-bottom: 0.5rem;">
           ${DIAS.map(d => {
             const isSelected = store.diaSeleccionado === d;
             return `
@@ -58,6 +59,18 @@ export function renderDriverMobileView() {
             `;
           }).join('')}
         </div>
+
+        <!-- Botón de Ordenamiento por Cercanía GPS -->
+        <button 
+          type="button"
+          class="btn btn-secondary btn-sm"
+          style="width: 100%; font-size: 0.78rem; justify-content: center; background: ${store.driverCoords ? '#ecfdf5' : '#f0f9ff'}; color: ${store.driverCoords ? '#065f46' : 'var(--primary)'}; border-color: ${store.driverCoords ? '#a7f3d0' : '#bfdbfe'};"
+          onclick="window.handleOptimizeProximity()"
+          ${isOptimizingGPS ? 'disabled' : ''}
+        >
+          <i data-lucide="navigation" style="width: 14px; height: 14px; color: ${store.driverCoords ? '#10b981' : 'var(--primary)'};"></i>
+          ${isOptimizingGPS ? 'Calculando GPS...' : (store.driverCoords ? '📍 Ruta Ordenada por Cercanía GPS Activa' : '📍 Ordenar Paradas por Cercanía de mi Ubicación')}
+        </button>
       </div>
 
       ${totalParadas === 0 ? `
@@ -75,7 +88,7 @@ export function renderDriverMobileView() {
         </div>
       ` : `
         
-        <!-- Carrusel / Lista de Paradas del Día -->
+        <!-- Carrusel / Lista de Paradas del Día (Ordenadas por Cercanía) -->
         <div style="display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 0.6rem; margin-bottom: 0.75rem;">
           ${clientesDelDia.map((c, idx) => {
             const st = store.getEstadoEntregaCliente(c.id_cliente);
@@ -85,7 +98,7 @@ export function renderDriverMobileView() {
                 type="button"
                 onclick="window.selectClientStop(${c.id_cliente})"
                 style="
-                  min-width: 130px; 
+                  min-width: 140px; 
                   padding: 0.6rem; 
                   border-radius: var(--radius-sm); 
                   border: 2px solid ${isCurrent ? 'var(--primary)' : 'var(--border-subtle)'}; 
@@ -99,7 +112,7 @@ export function renderDriverMobileView() {
                   <strong style="font-size: 0.75rem; color: var(--text-dim);">#${idx + 1}</strong>
                   ${st?.estado === 'OK' ? '<span style="color: #16a34a; font-size: 0.75rem; font-weight: 800;">✓ OK</span>' : ''}
                   ${st?.estado === 'NO_ESTABA' ? '<span style="color: #dc2626; font-size: 0.75rem; font-weight: 800;">✗ No</span>' : ''}
-                  ${!st ? '<span style="color: var(--primary); font-size: 0.7rem; font-weight: 700;">Pendiente</span>' : ''}
+                  ${!st ? (c.distanciaTexto ? `<span style="color: #0284c7; font-size: 0.7rem; font-weight: 800;">📍 ${c.distanciaTexto}</span>` : '<span style="color: var(--primary); font-size: 0.7rem; font-weight: 700;">Pendiente</span>') : ''}
                 </div>
                 <strong style="font-size: 0.85rem; color: var(--text-main); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                   ${c.nombre}
@@ -115,9 +128,16 @@ export function renderDriverMobileView() {
             
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
               <div>
-                <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.1rem;">
-                  ${activeClient.nombre}
-                </h2>
+                <div style="display: flex; align-items: center; gap: 0.4rem; margin-bottom: 0.15rem;">
+                  <h2 style="font-size: 1.35rem; font-weight: 800; color: var(--text-main); margin: 0;">
+                    ${activeClient.nombre}
+                  </h2>
+                  ${activeClient.distanciaTexto ? `
+                    <span class="badge badge-blue" style="font-size: 0.7rem; padding: 0.15rem 0.4rem;">
+                      📍 a ${activeClient.distanciaTexto}
+                    </span>
+                  ` : ''}
+                </div>
                 <p style="font-size: 0.88rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.35rem;">
                   <i data-lucide="map-pin" style="width: 14px; height: 14px; color: var(--primary); flex-shrink: 0;"></i>
                   ${activeClient.direccion}
@@ -297,6 +317,20 @@ export function renderDriverMobileView() {
 }
 
 // Handlers
+window.handleOptimizeProximity = async () => {
+  isOptimizingGPS = true;
+  store.notify();
+  try {
+    const coords = await store.autoOptimizarRutaGPS();
+    window.showToast(`📍 Paradas ordenadas por cercanía a tu ubicación GPS`, 'success');
+  } catch (e) {
+    window.showToast('No se pudo obtener la ubicación GPS', 'error');
+  } finally {
+    isOptimizingGPS = false;
+    store.notify();
+  }
+};
+
 window.selectDriverDay = (dia) => {
   store.setDiaSeleccionado(dia);
   selectedClientId = null;
@@ -304,7 +338,6 @@ window.selectDriverDay = (dia) => {
 
 window.selectClientStop = (id) => {
   selectedClientId = id;
-  const activeClient = store.clientes.find(c => c.id_cliente === Number(id));
   currentDelivery = {
     sifones_ent: 6,
     sifones_dev: 6,
@@ -377,9 +410,9 @@ window.confirmEntregaOK = () => {
     metodo_pago: currentDelivery.metodo_pago
   });
 
-  window.showToast(`✅ Entrega registrada con éxito para ${activeClient.nombre}`, 'success');
+  window.showToast(`✅ Entrega registrada para ${activeClient.nombre}`, 'success');
 
-  // Avanzar a la siguiente parada pendiente
+  // Avanzar a la siguiente parada pendiente más cercana
   const siguiente = clientesDelDia.find(c => !store.getEstadoEntregaCliente(c.id_cliente) && c.id_cliente !== activeClient.id_cliente);
   if (siguiente) {
     selectedClientId = siguiente.id_cliente;
@@ -409,7 +442,6 @@ window.confirmEntregaNoEstaba = () => {
 
   window.showToast(`❌ Parada marcada como "No Estaba" (${activeClient.nombre})`, 'info');
 
-  // Avanzar a la siguiente parada
   const siguiente = clientesDelDia.find(c => !store.getEstadoEntregaCliente(c.id_cliente) && c.id_cliente !== activeClient.id_cliente);
   if (siguiente) {
     selectedClientId = siguiente.id_cliente;

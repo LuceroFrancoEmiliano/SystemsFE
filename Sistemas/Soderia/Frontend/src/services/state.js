@@ -5,6 +5,8 @@
  * ============================================================================
  */
 
+import { GeoService } from './geoService.js';
+
 const API_BASE = 'http://localhost:3001/api';
 
 const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -39,6 +41,9 @@ class SoderiaStore {
     // Historial de entregas del día
     this.entregasDelDia = JSON.parse(localStorage.getItem('soderia_entregas_dia_v4') || '{}');
     
+    // Posición GPS del chofer
+    this.driverCoords = null;
+
     // Día seleccionado para la ruta (por defecto el día actual)
     const todayIndex = new Date().getDay();
     this.diaSeleccionado = DIAS_SEMANA[todayIndex];
@@ -126,22 +131,35 @@ class SoderiaStore {
     this.notify();
   }
 
-  // Obtener clientes asignados automáticamente para el día y chofer actual
+  // Obtener clientes asignados automáticamente para el día y chofer actual (ordenados por cercanía)
   getClientesDelDia(dia = this.diaSeleccionado) {
-    return this.clientes.filter(c => {
-      // Si el cliente tiene configurado este día de visita
+    const list = this.clientes.filter(c => {
       const dias = c.dias_visita || ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const correspondeDia = Array.isArray(dias) 
         ? dias.some(d => d.toLowerCase().includes(dia.toLowerCase()))
         : String(dias).toLowerCase().includes(dia.toLowerCase());
 
-      // Si el usuario es un Chofer, filtrar por su asignación o zona
       if (this.usuario?.rol === 'CHOFER' && c.chofer_asignado) {
         return correspondeDia && (c.chofer_asignado === this.usuario.email || c.chofer_asignado === this.usuario.nombre || c.chofer_asignado === 'TODOS');
       }
 
       return correspondeDia;
     });
+
+    // Si tenemos coordenadas del chofer, ordenar por cercanía en metros
+    if (this.driverCoords) {
+      return GeoService.sortByProximity(this.driverCoords, list);
+    }
+
+    return list;
+  }
+
+  // Optimizar ruta completa según la ubicación GPS actual del chofer
+  async autoOptimizarRutaGPS() {
+    const coords = await GeoService.getCurrentPosition();
+    this.driverCoords = coords;
+    this.notify();
+    return coords;
   }
 
   async login(email, password) {
