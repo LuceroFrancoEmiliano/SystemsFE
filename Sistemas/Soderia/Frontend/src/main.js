@@ -88,6 +88,18 @@ window.navigateSod = (view) => {
   store.setCurrentView(view);
 };
 
+window.logoutSod = () => {
+  store.logout();
+  window.showToast('Sesión cerrada correctamente', 'info');
+};
+
+window.switchRole = (role) => {
+  store.switchUserRole(role);
+  window.showToast(`Cambiado a rol: ${role === 'ADMIN_PROPIETARIO' ? '👑 Administrador' : '🚚 Chofer'}`, 'info');
+};
+
+window.store = store;
+
 store.subscribe(() => {
   renderApp();
 });

@@ -74,25 +74,25 @@ export function renderSidebar() {
           <button 
             type="button" 
             class="btn ${isAdmin ? 'btn-primary' : 'btn-secondary'} btn-sm" 
-            style="font-size: 0.72rem; padding: 0.25rem 0.5rem; flex: 1;" 
-            onclick="store.switchUserRole('ADMIN_PROPIETARIO')"
+            style="font-size: 0.72rem; padding: 0.35rem 0.5rem; flex: 1;" 
+            onclick="window.switchRole('ADMIN_PROPIETARIO')"
           >
             👑 Dueño
           </button>
           <button 
             type="button" 
             class="btn ${isChofer ? 'btn-primary' : 'btn-secondary'} btn-sm" 
-            style="font-size: 0.72rem; padding: 0.25rem 0.5rem; flex: 1;" 
-            onclick="store.switchUserRole('CHOFER')"
+            style="font-size: 0.72rem; padding: 0.35rem 0.5rem; flex: 1;" 
+            onclick="window.switchRole('CHOFER')"
           >
             🚚 Chofer
           </button>
         </div>
       </div>
 
-      <!-- Footer con Usuario y Cerrar Sesión -->
+      <!-- Footer con Usuario y Botón de Cerrar Sesión -->
       <div style="padding: 0.9rem 1.25rem; border-top: 1px solid var(--border-subtle); background: #f8fafc;">
-        <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem;">
           <div style="display: flex; align-items: center; gap: 0.5rem; min-width: 0;">
             <div style="width: 32px; height: 32px; border-radius: 50%; background: #e0f2fe; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; flex-shrink: 0;">
               ${user ? user.nombre.charAt(0) : 'U'}
@@ -106,11 +106,17 @@ export function renderSidebar() {
               </span>
             </div>
           </div>
-
-          <button onclick="store.logout()" title="Cerrar Sesión" style="background: transparent; border: none; cursor: pointer; color: var(--text-dim); padding: 0.3rem;">
-            <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
-          </button>
         </div>
+
+        <button 
+          type="button"
+          class="btn btn-secondary btn-sm" 
+          style="width: 100%; font-size: 0.78rem; padding: 0.4rem; justify-content: center; color: var(--accent-rose); border-color: #fecdd3;" 
+          onclick="window.logoutSod()"
+        >
+          <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+          Cerrar Sesión
+        </button>
       </div>
     </aside>
   `;
