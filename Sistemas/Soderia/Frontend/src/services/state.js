@@ -1,15 +1,17 @@
 /**
  * ============================================================================
  * STORE DE ESTADO REACTIVO - SODERÍA CLOUD PRO
- * Manejo de Roles: ADMIN_PROPIETARIO vs CHOFER y Autenticación
+ * Asignación Automática por Día y Gestión Rápida para Choferes
  * ============================================================================
  */
 
 const API_BASE = 'http://localhost:3001/api';
 
+const DIAS_SEMANA = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
 class SoderiaStore {
   constructor() {
-    const savedSession = localStorage.getItem('soderia_session_v3');
+    const savedSession = localStorage.getItem('soderia_session_v4');
     const parsed = savedSession ? JSON.parse(savedSession) : null;
 
     this.empresa = parsed?.empresa || {
@@ -18,7 +20,6 @@ class SoderiaStore {
       nombre_empresa: 'Mi Sodería'
     };
 
-    // Por defecto el administrador propietario
     this.usuario = parsed?.usuario || {
       id_usuario: 1,
       nombre: 'Administrador Propietario',
@@ -29,12 +30,19 @@ class SoderiaStore {
     this.isAuthenticated = Boolean(parsed);
     this.currentView = this.isAuthenticated 
       ? (this.usuario.rol === 'CHOFER' ? 'chofer-movil' : 'dashboard')
-      : 'dashboard'; // Inicia en dashboard o login según sesión
+      : 'dashboard';
     
-    // Padrón limpio
-    this.clientes = JSON.parse(localStorage.getItem('soderia_clientes_v3') || '[]');
-    this.empleados = JSON.parse(localStorage.getItem('soderia_empleados_v3') || '[]');
+    // Padrón de clientes y empleados
+    this.clientes = JSON.parse(localStorage.getItem('soderia_clientes_v4') || '[]');
+    this.empleados = JSON.parse(localStorage.getItem('soderia_empleados_v4') || '[]');
     
+    // Historial de entregas del día
+    this.entregasDelDia = JSON.parse(localStorage.getItem('soderia_entregas_dia_v4') || '{}');
+    
+    // Día seleccionado para la ruta (por defecto el día actual)
+    const todayIndex = new Date().getDay();
+    this.diaSeleccionado = DIAS_SEMANA[todayIndex];
+
     this.metricas = {
       total_clientes: 0,
       sifones_en_calle: 0,
@@ -48,10 +56,9 @@ class SoderiaStore {
       ]
     };
 
-    this.repartoActivo = null;
     this.listeners = [];
 
-    // Chequear si viene un Ticket SSO en la URL
+    // Chequear ticket SSO
     this.checkSSOTicket();
   }
 
@@ -70,33 +77,31 @@ class SoderiaStore {
           this.empresa = data.empresa;
           this.usuario = {
             ...data.usuario,
-            rol: 'ADMIN_PROPIETARIO' // El que compra en el Hub siempre es ADMIN
+            rol: 'ADMIN_PROPIETARIO'
           };
           this.isAuthenticated = true;
           this.currentView = 'dashboard';
           this.save();
-          // Limpiar URL
           window.history.replaceState({}, document.title, window.location.pathname);
           this.notify();
-          window.showToast?.(`👋 ¡Bienvenido ${this.usuario.nombre} (Administrador de ${this.empresa.nombre_empresa})!`, 'success');
+          window.showToast?.(`👋 ¡Bienvenido ${this.usuario.nombre} a ${this.empresa.nombre_empresa}!`, 'success');
         }
-      } catch (err) {
-        console.error('Error SSO:', err);
-      }
+      } catch (err) {}
     }
   }
 
   save() {
     if (this.isAuthenticated && this.usuario) {
-      localStorage.setItem('soderia_session_v3', JSON.stringify({
+      localStorage.setItem('soderia_session_v4', JSON.stringify({
         empresa: this.empresa,
         usuario: this.usuario
       }));
     } else {
-      localStorage.removeItem('soderia_session_v3');
+      localStorage.removeItem('soderia_session_v4');
     }
-    localStorage.setItem('soderia_clientes_v3', JSON.stringify(this.clientes));
-    localStorage.setItem('soderia_empleados_v3', JSON.stringify(this.empleados));
+    localStorage.setItem('soderia_clientes_v4', JSON.stringify(this.clientes));
+    localStorage.setItem('soderia_empleados_v4', JSON.stringify(this.empleados));
+    localStorage.setItem('soderia_entregas_dia_v4', JSON.stringify(this.entregasDelDia));
   }
 
   subscribe(listener) {
@@ -116,10 +121,32 @@ class SoderiaStore {
     this.notify();
   }
 
+  setDiaSeleccionado(dia) {
+    this.diaSeleccionado = dia;
+    this.notify();
+  }
+
+  // Obtener clientes asignados automáticamente para el día y chofer actual
+  getClientesDelDia(dia = this.diaSeleccionado) {
+    return this.clientes.filter(c => {
+      // Si el cliente tiene configurado este día de visita
+      const dias = c.dias_visita || ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      const correspondeDia = Array.isArray(dias) 
+        ? dias.some(d => d.toLowerCase().includes(dia.toLowerCase()))
+        : String(dias).toLowerCase().includes(dia.toLowerCase());
+
+      // Si el usuario es un Chofer, filtrar por su asignación o zona
+      if (this.usuario?.rol === 'CHOFER' && c.chofer_asignado) {
+        return correspondeDia && (c.chofer_asignado === this.usuario.email || c.chofer_asignado === this.usuario.nombre || c.chofer_asignado === 'TODOS');
+      }
+
+      return correspondeDia;
+    });
+  }
+
   async login(email, password) {
     const cleanEmail = email.toLowerCase().trim();
 
-    // 1. Verificar si es el Administrador Propietario
     if (cleanEmail === 'admin@soderia.com' || cleanEmail === 'franco.admin@systems.com') {
       this.usuario = {
         id_usuario: 1,
@@ -133,7 +160,6 @@ class SoderiaStore {
       return { ok: true, usuario: this.usuario };
     }
 
-    // 2. Verificar en la lista de Choferes / Empleados creados
     const emp = this.empleados.find(e => e.email.toLowerCase() === cleanEmail);
     if (emp) {
       if (emp.password && emp.password !== password) {
@@ -151,28 +177,7 @@ class SoderiaStore {
       return { ok: true, usuario: this.usuario };
     }
 
-    // 3. Consultar al backend en vivo
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug: this.empresa.slug_empresa,
-          email: cleanEmail,
-          password
-        })
-      });
-      const data = await res.json();
-      if (data.ok && data.usuario) {
-        this.usuario = data.usuario;
-        this.isAuthenticated = true;
-        this.currentView = this.usuario.rol === 'CHOFER' ? 'chofer-movil' : 'dashboard';
-        this.notify();
-        return { ok: true, usuario: this.usuario };
-      }
-    } catch (e) {}
-
-    throw new Error('Credenciales inválidas para esta sodería');
+    throw new Error('Credenciales inválidas');
   }
 
   logout() {
@@ -194,7 +199,6 @@ class SoderiaStore {
       this.isAuthenticated = true;
       this.currentView = 'dashboard';
     } else {
-      // Chofer
       const firstChofer = this.empleados.find(e => e.rol === 'CHOFER') || {
         id_usuario: 2,
         nombre: 'Carlos Chofer',
@@ -215,21 +219,13 @@ class SoderiaStore {
       telefono: clienteData.telefono || '',
       direccion: clienteData.direccion,
       nombre_zona: clienteData.nombre_zona || 'Zona Centro',
+      dias_visita: clienteData.dias_visita || ['Lunes', 'Jueves'],
+      chofer_asignado: clienteData.chofer_asignado || 'TODOS',
       sifones_prestados: Number(clienteData.sifones_inicial || 0),
       bidones_prestados: Number(clienteData.bidones_inicial || 0),
-      saldo_deudor: 0
+      saldo_deudor: 0,
+      creado_en: new Date().toISOString()
     };
-
-    try {
-      await fetch(`${API_BASE}/clientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_empresa: this.empresa.id_empresa,
-          ...clienteData
-        })
-      });
-    } catch (e) {}
 
     this.clientes.unshift(newCli);
     this.notify();
@@ -247,67 +243,74 @@ class SoderiaStore {
       activo: true
     };
 
-    try {
-      await fetch(`${API_BASE}/empleados`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id_empresa: this.empresa.id_empresa,
-          ...empData
-        })
-      });
-    } catch (e) {}
-
     this.empleados.unshift(newEmp);
     this.notify();
     return newEmp;
   }
 
-  iniciarReparto({ chofer, zona, sifones_salida, bidones_salida }) {
-    this.repartoActivo = {
-      id_reparto: Date.now(),
-      chofer: chofer || this.usuario.nombre,
-      zona: zona || 'Zona Centro',
-      sifones_salida: Number(sifones_salida || 0),
-      bidones_salida: Number(bidones_salida || 0),
-      entregas: [],
-      total_efectivo: 0,
-      total_transferencia: 0,
-      total_fiado: 0
-    };
-    this.notify();
-  }
-
-  registrarEntregaReparto({ id_cliente, sifones_entregados, sifones_devueltos, bidones_entregados, bidones_devueltos, cobrado, metodo }) {
-    if (!this.repartoActivo) return;
-
+  // Registrar Resultado de Entrega (OK vs NO ESTABA)
+  registrarResultadoEntrega({
+    id_cliente,
+    estado, // 'OK' | 'NO_ESTABA'
+    sifones_entregados = 0,
+    sifones_devueltos = 0,
+    bidones_entregados = 0,
+    bidones_devueltos = 0,
+    monto_total = 0,
+    monto_cobrado = 0,
+    metodo_pago = 'EFECTIVO',
+    observacion = ''
+  }) {
     const cli = this.clientes.find(c => c.id_cliente === Number(id_cliente));
-    if (cli) {
-      cli.sifones_prestados += (Number(sifones_entregados) - Number(sifones_devueltos));
-      cli.bidones_prestados += (Number(bidones_entregados) - Number(bidones_devueltos));
+    if (!cli) return;
+
+    const fechaKey = new Date().toISOString().split('T')[0];
+    const key = `${fechaKey}_${id_cliente}`;
+
+    if (estado === 'OK') {
+      // 1. Actualizar balance de envases del cliente
+      const difSifones = Number(sifones_entregados) - Number(sifones_devueltos);
+      const difBidones = Number(bidones_entregados) - Number(bidones_devueltos);
+      cli.sifones_prestados = Math.max(0, (cli.sifones_prestados || 0) + difSifones);
+      cli.bidones_prestados = Math.max(0, (cli.bidones_prestados || 0) + difBidones);
+
+      // 2. Actualizar saldo / deuda del cliente (si no pagó completo)
+      const deudaGenerada = Number(monto_total) - Number(monto_cobrado);
+      cli.saldo_deudor = Math.max(0, (cli.saldo_deudor || 0) + deudaGenerada);
+
+      this.entregasDelDia[key] = {
+        estado: 'OK',
+        id_cliente: cli.id_cliente,
+        cliente_nombre: cli.nombre,
+        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        sifones_entregados: Number(sifones_entregados),
+        sifones_devueltos: Number(sifones_devueltos),
+        bidones_entregados: Number(bidones_entregados),
+        bidones_devueltos: Number(bidones_devueltos),
+        monto_cobrado: Number(monto_cobrado),
+        monto_deuda: deudaGenerada,
+        metodo_pago,
+        chofer: this.usuario?.nombre || 'Chofer'
+      };
+    } else {
+      // No Estaba
+      this.entregasDelDia[key] = {
+        estado: 'NO_ESTABA',
+        id_cliente: cli.id_cliente,
+        cliente_nombre: cli.nombre,
+        hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+        chofer: this.usuario?.nombre || 'Chofer',
+        observacion: observacion || 'Cliente no se encontraba en el domicilio'
+      };
     }
 
-    const entrega = {
-      id_entrega: Date.now(),
-      cliente_nombre: cli ? cli.nombre : 'Cliente',
-      sifones_entregados: Number(sifones_entregados),
-      sifones_devueltos: Number(sifones_devueltos),
-      bidones_entregados: Number(bidones_entregados),
-      bidones_devueltos: Number(bidones_devueltos),
-      cobrado: Number(cobrado),
-      metodo: metodo || 'EFECTIVO'
-    };
-
-    if (metodo === 'EFECTIVO') this.repartoActivo.total_efectivo += Number(cobrado);
-    if (metodo === 'TRANSFERENCIA') this.repartoActivo.total_transferencia += Number(cobrado);
-
-    this.repartoActivo.entregas.push(entrega);
     this.notify();
   }
 
-  cerrarReparto() {
-    this.repartoActivo = null;
-    this.notify();
+  getEstadoEntregaCliente(id_cliente) {
+    const fechaKey = new Date().toISOString().split('T')[0];
+    const key = `${fechaKey}_${id_cliente}`;
+    return this.entregasDelDia[key] || null;
   }
 }
 
