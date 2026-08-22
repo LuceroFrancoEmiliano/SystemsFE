@@ -7,6 +7,7 @@ import { renderDeliveryView } from './components/DeliveryView.js';
 import { renderStockView } from './components/StockView.js';
 import { renderStaffView } from './components/StaffView.js';
 import { renderDriverMobileView } from './components/DriverMobileView.js';
+import { renderLoginView } from './components/LoginView.js';
 import { offlineService } from './services/offlineSync.js';
 import './components/Toast.js';
 
@@ -15,6 +16,31 @@ function renderApp() {
   if (!app) return;
 
   const view = store.currentView;
+  const user = store.usuario;
+  const isAdmin = user?.rol === 'ADMIN_PROPIETARIO';
+  const isChofer = user?.rol === 'CHOFER';
+
+  // Si la vista es login, renderizar pantalla de login completa sin sidebar
+  if (view === 'login') {
+    app.innerHTML = `
+      <div id="toast-root"></div>
+      ${renderLoginView()}
+    `;
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+
+  // Protección de rutas por Rol:
+  // Si un chofer intenta acceder a una vista de admin, forzar a 'chofer-movil'
+  let activeView = view;
+  if (isChofer && (view === 'dashboard' || view === 'clientes' || view === 'stock' || view === 'empleados')) {
+    activeView = 'chofer-movil';
+  }
+
+  // Si un administrador entra a 'chofer-movil', redirigir a 'dashboard'
+  if (isAdmin && view === 'chofer-movil') {
+    activeView = 'dashboard';
+  }
 
   app.innerHTML = `
     <div id="toast-root"></div>
@@ -24,9 +50,9 @@ function renderApp() {
       <div class="main-content">
         <header class="topbar">
           <div style="display: flex; align-items: center; gap: 0.5rem;">
-            <span class="badge badge-blue">
-              <i data-lucide="shield-check" style="width: 13px; height: 13px; display: inline;"></i>
-              Instancia Dedicada
+            <span class="badge ${isAdmin ? 'badge-blue' : 'badge-amber'}">
+              <i data-lucide="${isAdmin ? 'shield-check' : 'truck'}" style="width: 13px; height: 13px; display: inline;"></i>
+              ${isAdmin ? 'Panel de Administración' : 'Panel Chofer en Ruta'}
             </span>
             <span style="font-size: 0.85rem; color: var(--text-muted);">
               ${store.empresa.nombre_empresa}
@@ -34,20 +60,20 @@ function renderApp() {
           </div>
 
           <div style="display: flex; align-items: center; gap: 1rem;">
-            <button class="btn btn-secondary btn-sm" onclick="window.showToast('Sincronizado con Neon DB', 'success')">
+            <button class="btn btn-secondary btn-sm" onclick="window.showToast('Conectado a Neon DB en Sao Paulo', 'success')">
               <i data-lucide="cloud" style="width: 14px; height: 14px; color: var(--accent-emerald);"></i>
-              Cloud Conectado
+              Cloud Activo
             </button>
           </div>
         </header>
 
         <main class="content-body">
-          ${view === 'dashboard' ? renderDashboardView() : ''}
-          ${view === 'clientes' ? renderClientsView() : ''}
-          ${view === 'reparto' ? renderDeliveryView() : ''}
-          ${view === 'chofer-movil' ? renderDriverMobileView() : ''}
-          ${view === 'stock' ? renderStockView() : ''}
-          ${view === 'empleados' ? renderStaffView() : ''}
+          ${activeView === 'dashboard' ? renderDashboardView() : ''}
+          ${activeView === 'clientes' ? renderClientsView() : ''}
+          ${activeView === 'reparto' ? renderDeliveryView() : ''}
+          ${activeView === 'chofer-movil' ? renderDriverMobileView() : ''}
+          ${activeView === 'stock' ? renderStockView() : ''}
+          ${activeView === 'empleados' ? renderStaffView() : ''}
         </main>
       </div>
     </div>
