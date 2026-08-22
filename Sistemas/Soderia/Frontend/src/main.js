@@ -11,6 +11,8 @@ import { renderLoginView } from './components/LoginView.js';
 import { offlineService } from './services/offlineSync.js';
 import './components/Toast.js';
 
+let isMobileSidebarOpen = false;
+
 function renderApp() {
   const app = document.getElementById('app');
   if (!app) return;
@@ -30,39 +32,43 @@ function renderApp() {
     return;
   }
 
-  // Protección de rutas por Rol:
-  // Si un chofer intenta acceder a una vista de admin, forzar a 'chofer-movil'
+  // Protección de rutas por Rol
   let activeView = view;
   if (isChofer && (view === 'dashboard' || view === 'clientes' || view === 'stock' || view === 'empleados')) {
     activeView = 'chofer-movil';
   }
 
-  // Si un administrador entra a 'chofer-movil', redirigir a 'dashboard'
   if (isAdmin && view === 'chofer-movil') {
     activeView = 'dashboard';
   }
 
   app.innerHTML = `
     <div id="toast-root"></div>
+    <div class="sidebar-overlay ${isMobileSidebarOpen ? 'open' : ''}" onclick="window.toggleMobileSidebar(false)"></div>
     <div class="app-layout">
-      ${renderSidebar()}
+      ${renderSidebar(isMobileSidebarOpen)}
 
       <div class="main-content">
         <header class="topbar">
-          <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button class="mobile-menu-btn" onclick="window.toggleMobileSidebar(true)" aria-label="Abrir Menú">
+              <i data-lucide="menu" style="width: 20px; height: 20px;"></i>
+            </button>
+
             <span class="badge ${isAdmin ? 'badge-blue' : 'badge-amber'}">
               <i data-lucide="${isAdmin ? 'shield-check' : 'truck'}" style="width: 13px; height: 13px; display: inline;"></i>
-              ${isAdmin ? 'Panel de Administración' : 'Panel Chofer en Ruta'}
+              ${isAdmin ? 'Administración' : 'Chofer en Ruta'}
             </span>
-            <span style="font-size: 0.85rem; color: var(--text-muted);">
+            
+            <span style="font-size: 0.85rem; color: var(--text-muted); display: none; @media(min-width: 640px){ display: inline; }">
               ${store.empresa.nombre_empresa}
             </span>
           </div>
 
-          <div style="display: flex; align-items: center; gap: 1rem;">
-            <button class="btn btn-secondary btn-sm" onclick="window.showToast('Conectado a Neon DB en Sao Paulo', 'success')">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <button class="btn btn-secondary btn-sm" onclick="window.showToast('Conectado a Neon DB en São Paulo', 'success')">
               <i data-lucide="cloud" style="width: 14px; height: 14px; color: var(--accent-emerald);"></i>
-              Cloud Activo
+              <span style="display: none; @media(min-width: 640px){ display: inline; }">Cloud Activo</span>
             </button>
           </div>
         </header>
@@ -84,7 +90,13 @@ function renderApp() {
   }
 }
 
+window.toggleMobileSidebar = (force) => {
+  isMobileSidebarOpen = force !== undefined ? force : !isMobileSidebarOpen;
+  renderApp();
+};
+
 window.navigateSod = (view) => {
+  isMobileSidebarOpen = false;
   store.setCurrentView(view);
 };
 

@@ -1,6 +1,6 @@
 import { store } from '../services/state.js';
 
-export function renderSidebar() {
+export function renderSidebar(isMobileOpen = false) {
   const view = store.currentView;
   const empresa = store.empresa;
   const user = store.usuario;
@@ -8,10 +8,10 @@ export function renderSidebar() {
   const isChofer = user?.rol === 'CHOFER';
 
   return `
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary); display: flex; align-items: center; justify-content: center; color: #fff;">
+    <aside class="sidebar ${isMobileOpen ? 'open' : ''}">
+      <div class="sidebar-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0;">
+          <div style="width: 36px; height: 36px; border-radius: var(--radius-sm); background: var(--primary); display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;">
             <i data-lucide="droplet" style="width: 20px; height: 20px;"></i>
           </div>
           <div style="min-width: 0;">
@@ -23,6 +23,10 @@ export function renderSidebar() {
             </span>
           </div>
         </div>
+
+        <button class="mobile-menu-btn" onclick="window.toggleMobileSidebar(false)" style="border: none; padding: 0.2rem;">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
       </div>
 
       <nav class="sidebar-nav">
