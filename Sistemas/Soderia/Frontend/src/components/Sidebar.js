@@ -38,6 +38,11 @@ export function renderSidebar() {
           Reparto del Día
         </button>
 
+        <button class="sidebar-btn ${view === 'chofer-movil' ? 'active' : ''}" onclick="window.navigateSod('chofer-movil')" style="background: ${view === 'chofer-movil' ? 'var(--primary)' : '#f0fdf4'}; color: ${view === 'chofer-movil' ? '#fff' : '#15803d'}; font-weight: 700;">
+          <i data-lucide="smartphone" style="width: 18px; height: 18px; color: ${view === 'chofer-movil' ? '#fff' : '#16a34a'};"></i>
+          Modo Chofer (Móvil)
+        </button>
+
         <button class="sidebar-btn ${view === 'stock' ? 'active' : ''}" onclick="window.navigateSod('stock')">
           <i data-lucide="boxes" style="width: 18px; height: 18px;"></i>
           Stock & Planta

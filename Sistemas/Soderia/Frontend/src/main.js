@@ -6,6 +6,8 @@ import { renderClientsView } from './components/ClientsView.js';
 import { renderDeliveryView } from './components/DeliveryView.js';
 import { renderStockView } from './components/StockView.js';
 import { renderStaffView } from './components/StaffView.js';
+import { renderDriverMobileView } from './components/DriverMobileView.js';
+import { offlineService } from './services/offlineSync.js';
 import './components/Toast.js';
 
 function renderApp() {
@@ -43,6 +45,7 @@ function renderApp() {
           ${view === 'dashboard' ? renderDashboardView() : ''}
           ${view === 'clientes' ? renderClientsView() : ''}
           ${view === 'reparto' ? renderDeliveryView() : ''}
+          ${view === 'chofer-movil' ? renderDriverMobileView() : ''}
           ${view === 'stock' ? renderStockView() : ''}
           ${view === 'empleados' ? renderStaffView() : ''}
         </main>
@@ -60,6 +63,10 @@ window.navigateSod = (view) => {
 };
 
 store.subscribe(() => {
+  renderApp();
+});
+
+offlineService.subscribe(() => {
   renderApp();
 });
 

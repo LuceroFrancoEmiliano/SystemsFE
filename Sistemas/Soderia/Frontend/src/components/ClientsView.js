@@ -1,4 +1,5 @@
 import { store } from '../services/state.js';
+import { WhatsAppService } from '../services/whatsapp.js';
 
 let showNewClientModal = false;
 
@@ -53,9 +54,20 @@ export function renderClientsView() {
                     </strong>
                   </td>
                   <td>
-                    <button class="btn btn-secondary btn-sm" onclick="window.showToast('Historial y comodato de ${c.nombre}', 'info')">
-                      Detalles
-                    </button>
+                    <div style="display: flex; gap: 0.4rem;">
+                      <button 
+                        class="btn btn-secondary btn-sm" 
+                        style="padding: 0.35rem 0.65rem; color: #15803d; border-color: #bbf7d0; background: #f0fdf4;"
+                        onclick="window.sendClientAviso('${c.nombre}', '${c.telefono}', '${c.nombre_zona}')"
+                        title="Enviar aviso de paso de camión por WhatsApp"
+                      >
+                        <i data-lucide="message-circle" style="width: 14px; height: 14px; color: #16a34a;"></i>
+                        Avisar
+                      </button>
+                      <button class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem;" onclick="window.showToast('Historial y comodato de ${c.nombre}', 'info')">
+                        Detalles
+                      </button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -126,6 +138,15 @@ export function renderClientsView() {
     </div>
   `;
 }
+
+window.sendClientAviso = (nombre, telefono, zona) => {
+  WhatsAppService.sendAvisoPaso({
+    clienteNombre: nombre,
+    clienteTelefono: telefono,
+    empresaNombre: store.empresa.nombre_empresa,
+    nombreZona: zona
+  });
+};
 
 window.toggleNewClientModal = (val) => {
   showNewClientModal = val;
