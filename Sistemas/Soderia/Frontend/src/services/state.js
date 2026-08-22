@@ -6,6 +6,7 @@
  */
 
 import { GeoService } from './geoService.js';
+import { WhatsAppBotEngine } from './whatsappBot.js';
 
 const API_BASE = 'http://localhost:3001/api';
 
@@ -40,6 +41,9 @@ class SoderiaStore {
     
     // Historial de entregas del día
     this.entregasDelDia = JSON.parse(localStorage.getItem('soderia_entregas_dia_v4') || '{}');
+    
+    // Pedidos pre-agendados automáticamente por el Bot de WhatsApp
+    this.pedidosWhatsapp = JSON.parse(localStorage.getItem('soderia_pedidos_wa_v4') || '{}');
     
     // Posición GPS del chofer
     this.driverCoords = null;
@@ -107,6 +111,60 @@ class SoderiaStore {
     localStorage.setItem('soderia_clientes_v4', JSON.stringify(this.clientes));
     localStorage.setItem('soderia_empleados_v4', JSON.stringify(this.empleados));
     localStorage.setItem('soderia_entregas_dia_v4', JSON.stringify(this.entregasDelDia));
+    localStorage.setItem('soderia_pedidos_wa_v4', JSON.stringify(this.pedidosWhatsapp));
+  }
+
+  // Procesar mensaje entrante de un cliente mediante el Bot Inteligente
+  procesarMensajeWhatsApp({ id_cliente, texto }) {
+    const cli = this.clientes.find(c => c.id_cliente === Number(id_cliente));
+    if (!cli) return null;
+
+    const parsed = WhatsAppBotEngine.parseIncomingMessage(texto, cli);
+    const fechaKey = new Date().toISOString().split('T')[0];
+    const key = `${fechaKey}_${cli.id_cliente}`;
+
+    const registro = {
+      id_pedido: Date.now(),
+      id_cliente: cli.id_cliente,
+      cliente_nombre: cli.nombre,
+      telefono: cli.telefono,
+      mensaje_original: texto,
+      intent: parsed.intent,
+      sifones: parsed.sifones,
+      bidones: parsed.bidones,
+      monto: parsed.monto,
+      totalPagar: parsed.totalPagar,
+      respuesta_bot: parsed.respuesta,
+      hora: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+      fecha: fechaKey
+    };
+
+    this.pedidosWhatsapp[key] = registro;
+
+    // Enviar en segundo plano a la base de datos Neon
+    fetch(`${API_BASE}/whatsapp/webhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_empresa: this.empresa.id_empresa,
+        id_cliente: cli.id_cliente,
+        mensaje: texto,
+        sifones: parsed.sifones,
+        bidones: parsed.bidones,
+        monto: parsed.monto,
+        estado: parsed.intent,
+        respuesta: parsed.respuesta
+      })
+    }).catch(() => {});
+
+    this.notify();
+    return registro;
+  }
+
+  getPedidoWhatsAppCliente(id_cliente) {
+    const fechaKey = new Date().toISOString().split('T')[0];
+    const key = `${fechaKey}_${id_cliente}`;
+    return this.pedidosWhatsapp[key] || null;
   }
 
   subscribe(listener) {

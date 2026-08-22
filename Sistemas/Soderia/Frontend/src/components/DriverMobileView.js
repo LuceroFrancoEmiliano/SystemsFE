@@ -151,6 +151,31 @@ export function renderDriverMobileView() {
               ` : ''}
             </div>
 
+            <!-- BADGE DE PEDIDO CONFIRMADO POR WHATSAPP (SI EXISTE) -->
+            ${(() => {
+              const pedidoWA = store.getPedidoWhatsAppCliente(activeClient.id_cliente);
+              if (pedidoWA && pedidoWA.intent === 'PEDIDO_CONFIRMADO') {
+                return `
+                  <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="message-circle" style="width: 18px; height: 18px; color: #10b981; flex-shrink: 0;"></i>
+                    <div style="font-size: 0.8rem; color: #065f46;">
+                      <strong>Pedido por WhatsApp:</strong> ${pedidoWA.sifones > 0 ? `${pedidoWA.sifones} sifones` : ''} ${pedidoWA.bidones > 0 ? `+ ${pedidoWA.bidones} bidón(es)` : ''} (Total: $${(pedidoWA.monto || 0).toFixed(2)})
+                    </div>
+                  </div>
+                `;
+              } else if (pedidoWA && pedidoWA.intent === 'NO_NECESITA') {
+                return `
+                  <div style="background: #fef3c7; border: 1px solid #fde68a; padding: 0.65rem 0.85rem; border-radius: var(--radius-sm); margin-top: 0.6rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <i data-lucide="info" style="width: 18px; height: 18px; color: #b45309; flex-shrink: 0;"></i>
+                    <div style="font-size: 0.8rem; color: #92400e;">
+                      <strong>Aviso por WhatsApp:</strong> El cliente avisó que hoy no necesita reposición.
+                    </div>
+                  </div>
+                `;
+              }
+              return '';
+            })()}
+
             <!-- Accesos directos: Maps & WhatsApp -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; margin-bottom: 1rem;">
               <a 

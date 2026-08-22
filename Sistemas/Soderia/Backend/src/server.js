@@ -166,6 +166,26 @@ app.post('/api/repartos/cerrar', async (req, res) => {
   res.status(result.ok ? 200 : 400).json(result);
 });
 
+// ----------------------------------------------------------------------------
+// 5. BOT DE WHATSAPP & PEDIDOS AUTOMATIZADOS
+// ----------------------------------------------------------------------------
+app.post('/api/whatsapp/webhook', async (req, res) => {
+  const { id_empresa, id_cliente, mensaje, sifones, bidones, monto, estado, respuesta } = req.body;
+  
+  const result = await callPackage('pkg_sod_whatsapp.registrar_pedido_bot', [
+    id_empresa || 1,
+    id_cliente,
+    mensaje,
+    sifones || 0,
+    bidones || 0,
+    monto || 0,
+    estado || 'CONFIRMADO',
+    respuesta || ''
+  ]);
+
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
 // Iniciar Servidor
 app.listen(PORT, () => {
   console.log(`=======================================================`);
