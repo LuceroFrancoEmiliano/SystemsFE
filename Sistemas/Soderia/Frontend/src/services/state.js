@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * STORE DE ESTADO REACTIVO - SODERÍA CLOUD PRO
+ * STORE DE ESTADO REACTIVO - SODERÍA CLOUD PRO (100% LIMPIO)
  * ============================================================================
  */
 
@@ -8,23 +8,27 @@ const API_BASE = 'http://localhost:3001/api';
 
 class SoderiaStore {
   constructor() {
-    const savedSession = localStorage.getItem('soderia_session');
+    const savedSession = localStorage.getItem('soderia_session_v2');
     const parsed = savedSession ? JSON.parse(savedSession) : null;
 
     this.empresa = parsed?.empresa || {
       id_empresa: 1,
-      slug_empresa: 'soderia-san-martin',
-      nombre_empresa: 'Sodería San Martín'
+      slug_empresa: 'mi-soderia',
+      nombre_empresa: 'Mi Sodería'
     };
 
     this.usuario = parsed?.usuario || {
       id_usuario: 1,
-      nombre: 'Martín Pérez',
-      email: 'martin@soderia.com',
+      nombre: 'Administrador Propietario',
+      email: 'admin@soderia.com',
       rol: 'ADMIN_PROPIETARIO'
     };
 
-    this.currentView = 'dashboard'; // 'dashboard' | 'clientes' | 'reparto' | 'stock' | 'empleados'
+    this.currentView = 'dashboard'; // 'dashboard' | 'clientes' | 'reparto' | 'chofer-movil' | 'stock' | 'empleados'
+    
+    // Datos 100% limpios
+    this.clientes = JSON.parse(localStorage.getItem('soderia_clientes_v2') || '[]');
+    this.empleados = JSON.parse(localStorage.getItem('soderia_empleados_v2') || '[]');
     
     this.metricas = {
       total_clientes: 0,
@@ -33,17 +37,11 @@ class SoderiaStore {
       total_deuda_por_cobrar: 0,
       recaudacion_hoy: 0,
       stock_planta: [
-        { tipo_envase: 'SIFON_SODA', llenos: 150, vacios: 80 },
-        { tipo_envase: 'BIDON_20L', llenos: 45, vacios: 20 },
-        { tipo_envase: 'BIDON_12L', llenos: 30, vacios: 15 }
+        { tipo_envase: 'SIFON_SODA', llenos: 0, vacios: 0 },
+        { tipo_envase: 'BIDON_20L', llenos: 0, vacios: 0 },
+        { tipo_envase: 'BIDON_12L', llenos: 0, vacios: 0 }
       ]
     };
-
-    this.clientes = [
-      { id_cliente: 1, nombre: 'Panadería El Sol', telefono: '+54 11 4444-5555', direccion: 'Av. San Martín 1250', nombre_zona: 'Zona Centro', sifones_prestados: 12, bidones_prestados: 2, saldo_deudor: 0 },
-      { id_cliente: 2, nombre: 'Gimnasio Titán', telefono: '+54 11 3333-2222', direccion: 'Belgrano 450', nombre_zona: 'Zona Centro', sifones_prestados: 0, bidones_prestados: 6, saldo_deudor: 5600 },
-      { id_cliente: 3, nombre: 'Familia González', telefono: '+54 11 6666-7777', direccion: 'Mitre 890, Dpto 2', nombre_zona: 'Zona Norte', sifones_prestados: 6, bidones_prestados: 1, saldo_deudor: 0 }
-    ];
 
     this.repartoActivo = null;
     this.listeners = [];
@@ -79,10 +77,12 @@ class SoderiaStore {
   }
 
   save() {
-    localStorage.setItem('soderia_session', JSON.stringify({
+    localStorage.setItem('soderia_session_v2', JSON.stringify({
       empresa: this.empresa,
       usuario: this.usuario
     }));
+    localStorage.setItem('soderia_clientes_v2', JSON.stringify(this.clientes));
+    localStorage.setItem('soderia_empleados_v2', JSON.stringify(this.empleados));
   }
 
   subscribe(listener) {
@@ -106,7 +106,7 @@ class SoderiaStore {
     const newCli = {
       id_cliente: Date.now(),
       nombre: clienteData.nombre,
-      telefono: clienteData.telefono,
+      telefono: clienteData.telefono || '',
       direccion: clienteData.direccion,
       nombre_zona: clienteData.nombre_zona || 'Zona Centro',
       sifones_prestados: Number(clienteData.sifones_inicial || 0),
@@ -130,13 +130,39 @@ class SoderiaStore {
     return newCli;
   }
 
+  async addEmpleado(empData) {
+    const newEmp = {
+      id_usuario: Date.now(),
+      nombre: empData.nombre,
+      email: empData.email,
+      rol: empData.rol || 'CHOFER',
+      telefono: empData.telefono || '',
+      activo: true
+    };
+
+    try {
+      await fetch(`${API_BASE}/empleados`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_empresa: this.empresa.id_empresa,
+          ...empData
+        })
+      });
+    } catch (e) {}
+
+    this.empleados.unshift(newEmp);
+    this.notify();
+    return newEmp;
+  }
+
   iniciarReparto({ chofer, zona, sifones_salida, bidones_salida }) {
     this.repartoActivo = {
       id_reparto: Date.now(),
       chofer: chofer || this.usuario.nombre,
       zona: zona || 'Zona Centro',
-      sifones_salida: Number(sifones_salida || 80),
-      bidones_salida: Number(bidones_salida || 25),
+      sifones_salida: Number(sifones_salida || 0),
+      bidones_salida: Number(bidones_salida || 0),
       entregas: [],
       total_efectivo: 0,
       total_transferencia: 0,

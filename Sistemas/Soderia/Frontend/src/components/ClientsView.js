@@ -25,55 +25,69 @@ export function renderClientsView() {
       </div>
 
       <div class="card">
-        <div class="table-responsive">
-          <table>
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th>Teléfono</th>
-                <th>Dirección</th>
-                <th>Zona</th>
-                <th>Sifones Prestados</th>
-                <th>Bidones Prestados</th>
-                <th>Saldo Pendiente</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${clientes.map(c => `
+        ${clientes.length === 0 ? `
+          <div style="padding: 4rem 2rem; text-align: center;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; background: #e0f2fe; color: var(--primary); display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+              <i data-lucide="users" style="width: 28px; height: 28px;"></i>
+            </div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.4rem;">Padrón de Clientes Vacío</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Comienza dando de alta a los clientes de tu sodería y sus envases prestados.</p>
+            <button class="btn btn-primary" onclick="window.toggleNewClientModal(true)">
+              <i data-lucide="user-plus" style="width: 16px; height: 16px;"></i>
+              + Dar de Alta Primer Cliente
+            </button>
+          </div>
+        ` : `
+          <div class="table-responsive">
+            <table>
+              <thead>
                 <tr>
-                  <td><strong>${c.nombre}</strong></td>
-                  <td>${c.telefono || '-'}</td>
-                  <td>${c.direccion}</td>
-                  <td><span class="badge badge-blue">${c.nombre_zona}</span></td>
-                  <td><strong style="color: var(--primary);">${c.sifones_prestados}</strong> sifones</td>
-                  <td><strong style="color: var(--accent-cyan);">${c.bidones_prestados}</strong> bidones</td>
-                  <td>
-                    <strong style="color: ${c.saldo_deudor > 0 ? '#dc2626' : '#15803d'}; font-family: var(--font-mono);">
-                      $${c.saldo_deudor.toFixed(2)}
-                    </strong>
-                  </td>
-                  <td>
-                    <div style="display: flex; gap: 0.4rem;">
-                      <button 
-                        class="btn btn-secondary btn-sm" 
-                        style="padding: 0.35rem 0.65rem; color: #15803d; border-color: #bbf7d0; background: #f0fdf4;"
-                        onclick="window.sendClientAviso('${c.nombre}', '${c.telefono}', '${c.nombre_zona}')"
-                        title="Enviar aviso de paso de camión por WhatsApp"
-                      >
-                        <i data-lucide="message-circle" style="width: 14px; height: 14px; color: #16a34a;"></i>
-                        Avisar
-                      </button>
-                      <button class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem;" onclick="window.showToast('Historial y comodato de ${c.nombre}', 'info')">
-                        Detalles
-                      </button>
-                    </div>
-                  </td>
+                  <th>Cliente</th>
+                  <th>Teléfono</th>
+                  <th>Dirección</th>
+                  <th>Zona</th>
+                  <th>Sifones Prestados</th>
+                  <th>Bidones Prestados</th>
+                  <th>Saldo Pendiente</th>
+                  <th>Acciones</th>
                 </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                ${clientes.map(c => `
+                  <tr>
+                    <td><strong>${c.nombre}</strong></td>
+                    <td>${c.telefono || '-'}</td>
+                    <td>${c.direccion}</td>
+                    <td><span class="badge badge-blue">${c.nombre_zona}</span></td>
+                    <td><strong style="color: var(--primary);">${c.sifones_prestados}</strong> sifones</td>
+                    <td><strong style="color: var(--accent-cyan);">${c.bidones_prestados}</strong> bidones</td>
+                    <td>
+                      <strong style="color: ${c.saldo_deudor > 0 ? '#dc2626' : '#15803d'}; font-family: var(--font-mono);">
+                        $${c.saldo_deudor.toFixed(2)}
+                      </strong>
+                    </td>
+                    <td>
+                      <div style="display: flex; gap: 0.4rem;">
+                        <button 
+                          class="btn btn-secondary btn-sm" 
+                          style="padding: 0.35rem 0.65rem; color: #15803d; border-color: #bbf7d0; background: #f0fdf4;"
+                          onclick="window.sendClientAviso('${c.nombre}', '${c.telefono}', '${c.nombre_zona}')"
+                          title="Enviar aviso de paso de camión por WhatsApp"
+                        >
+                          <i data-lucide="message-circle" style="width: 14px; height: 14px; color: #16a34a;"></i>
+                          Avisar
+                        </button>
+                        <button class="btn btn-secondary btn-sm" style="padding: 0.35rem 0.65rem;" onclick="window.showToast('Historial y comodato de ${c.nombre}', 'info')">
+                          Detalles
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `}
       </div>
 
       <!-- Modal Nuevo Cliente -->

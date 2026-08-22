@@ -2,9 +2,9 @@ import { store } from '../services/state.js';
 
 export function renderDashboardView() {
   const clientes = store.clientes;
-  const sifonesCalle = clientes.reduce((acc, c) => acc + c.sifones_prestados, 0);
-  const bidonesCalle = clientes.reduce((acc, c) => acc + c.bidones_prestados, 0);
-  const deudaTotal = clientes.reduce((acc, c) => acc + c.saldo_deudor, 0);
+  const sifonesCalle = clientes.reduce((acc, c) => acc + (c.sifones_prestados || 0), 0);
+  const bidonesCalle = clientes.reduce((acc, c) => acc + (c.bidones_prestados || 0), 0);
+  const deudaTotal = clientes.reduce((acc, c) => acc + (c.saldo_deudor || 0), 0);
 
   return `
     <div class="animate-fade-in">
@@ -77,37 +77,47 @@ export function renderDashboardView() {
             <button class="btn btn-secondary btn-sm" onclick="window.navigateSod('clientes')">Ver Todos</button>
           </div>
 
-          <div class="table-responsive">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Zona</th>
-                  <th>Sifones</th>
-                  <th>Bidones</th>
-                  <th>Saldo</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${clientes.slice(0, 5).map(c => `
+          ${clientes.length === 0 ? `
+            <div style="padding: 3rem 1rem; text-align: center;">
+              <i data-lucide="users" style="width: 36px; height: 36px; color: var(--text-dim); margin-bottom: 0.75rem;"></i>
+              <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">Aún no tienes clientes registrados en tu sodería.</p>
+              <button class="btn btn-primary btn-sm" onclick="window.navigateSod('clientes')">
+                + Agregar Mi Primer Cliente
+              </button>
+            </div>
+          ` : `
+            <div class="table-responsive">
+              <table>
+                <thead>
                   <tr>
-                    <td>
-                      <strong>${c.nombre}</strong>
-                      <span style="font-size: 0.75rem; color: var(--text-dim); display: block;">${c.direccion}</span>
-                    </td>
-                    <td><span class="badge badge-blue">${c.nombre_zona}</span></td>
-                    <td><strong>${c.sifones_prestados}</strong> unid.</td>
-                    <td><strong>${c.bidones_prestados}</strong> unid.</td>
-                    <td>
-                      <span style="font-weight: 700; color: ${c.saldo_deudor > 0 ? '#dc2626' : '#15803d'}; font-family: var(--font-mono);">
-                        $${c.saldo_deudor.toFixed(2)}
-                      </span>
-                    </td>
+                    <th>Cliente</th>
+                    <th>Zona</th>
+                    <th>Sifones</th>
+                    <th>Bidones</th>
+                    <th>Saldo</th>
                   </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  ${clientes.slice(0, 5).map(c => `
+                    <tr>
+                      <td>
+                        <strong>${c.nombre}</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-dim); display: block;">${c.direccion}</span>
+                      </td>
+                      <td><span class="badge badge-blue">${c.nombre_zona}</span></td>
+                      <td><strong>${c.sifones_prestados}</strong> unid.</td>
+                      <td><strong>${c.bidones_prestados}</strong> unid.</td>
+                      <td>
+                        <span style="font-weight: 700; color: ${c.saldo_deudor > 0 ? '#dc2626' : '#15803d'}; font-family: var(--font-mono);">
+                          $${c.saldo_deudor.toFixed(2)}
+                        </span>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
         </div>
 
         <!-- Stock en Planta -->
@@ -118,24 +128,24 @@ export function renderDashboardView() {
             <div style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
               <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700;">Sifones de Soda</span>
               <div style="display: flex; justify-content: space-between; margin-top: 0.4rem;">
-                <span style="color: #15803d; font-weight: 700;">150 Llenos</span>
-                <span style="color: #b45309; font-weight: 700;">80 Vacíos</span>
+                <span style="color: #15803d; font-weight: 700;">0 Llenos</span>
+                <span style="color: #b45309; font-weight: 700;">0 Vacíos</span>
               </div>
             </div>
 
             <div style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
               <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700;">Bidones de 20 Litros</span>
               <div style="display: flex; justify-content: space-between; margin-top: 0.4rem;">
-                <span style="color: #15803d; font-weight: 700;">45 Llenos</span>
-                <span style="color: #b45309; font-weight: 700;">20 Vacíos</span>
+                <span style="color: #15803d; font-weight: 700;">0 Llenos</span>
+                <span style="color: #b45309; font-weight: 700;">0 Vacíos</span>
               </div>
             </div>
 
             <div style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 1rem; border-radius: var(--radius-sm);">
               <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-dim); font-weight: 700;">Bidones de 12 Litros</span>
               <div style="display: flex; justify-content: space-between; margin-top: 0.4rem;">
-                <span style="color: #15803d; font-weight: 700;">30 Llenos</span>
-                <span style="color: #b45309; font-weight: 700;">15 Vacíos</span>
+                <span style="color: #15803d; font-weight: 700;">0 Llenos</span>
+                <span style="color: #b45309; font-weight: 700;">0 Vacíos</span>
               </div>
             </div>
           </div>
