@@ -42,8 +42,21 @@ class Store {
     this.contactEmail = 'franco.soporte@systems.com';
     this.listeners = [];
 
-    // Notificar vista inicial al backend
+    // Notificar vista inicial al backend y cargar catálogo desde Neon
     this.notifyServerView('catalog');
+    this.fetchSistemasFromBackend();
+  }
+
+  async fetchSistemasFromBackend() {
+    try {
+      const res = await fetch('http://localhost:3000/api/sistemas');
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.sistemas)) {
+        this.sistemas = data.sistemas;
+        this.save();
+        this.notify();
+      }
+    } catch (e) {}
   }
 
   save() {
@@ -276,11 +289,13 @@ class Store {
 
     this.notify();
     
+    const baseUrl = (sys?.url_base || 'http://localhost:5174').replace(/\/$/, '');
+
     return {
       ticket,
       licencia: lic,
       sistema: sys,
-      redirect_url: `${sys?.url_base || 'https://app.misistema.com'}/sso/callback?ticket=${ticket}`
+      redirect_url: `${baseUrl}/?ticket=${ticket}`
     };
   }
 
