@@ -262,6 +262,32 @@ class Store {
     return newSystem;
   }
 
+  async updateSystemPrice(sistemaId, newPrice) {
+    const sys = this.sistemas.find(s => s.id_sistema === Number(sistemaId));
+    if (!sys) throw new Error('Sistema no encontrado');
+
+    const numPrice = parseFloat(newPrice);
+    if (isNaN(numPrice) || numPrice < 0) throw new Error('Precio inválido');
+
+    sys.precio = numPrice;
+
+    // Actualizar en el backend y base de datos Neon
+    try {
+      await fetch(`http://localhost:3000/api/admin/sistemas/${sys.id_sistema}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_id: this.currentUser?.id_usuario || 1,
+          precio: numPrice
+        })
+      });
+    } catch (e) {}
+
+    this.save();
+    this.notify();
+    return sys;
+  }
+
   buySystem({ sistemaId, nombreEmpresa, slugEmpresa, metodoPago }) {
     if (!this.isAuthenticated || !this.currentUser) {
       throw new Error('Debes estar autenticado para comprar');

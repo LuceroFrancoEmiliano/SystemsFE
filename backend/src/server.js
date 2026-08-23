@@ -230,6 +230,21 @@ app.post('/api/admin/sistemas', async (req, res) => {
   res.status(result.ok ? 201 : 403).json(result);
 });
 
+// Actualizar precio o datos de un sistema existente
+app.put('/api/admin/sistemas/:id_sistema', async (req, res) => {
+  const { admin_id, precio, titulo, descripcion_corta, url_base, activo } = req.body;
+  const result = await callPackage('pkg_admin.actualizar_sistema', [
+    admin_id || 1,
+    req.params.id_sistema,
+    precio,
+    titulo || null,
+    descripcion_corta || null,
+    url_base || null,
+    activo !== undefined ? activo : true
+  ]);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
 // Listar compradores y si están usando o no sus sistemas comprados
 app.get('/api/admin/compradores/:admin_id', async (req, res) => {
   const result = await callPackage('pkg_admin.listar_compradores_y_uso', [

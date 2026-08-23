@@ -1,10 +1,10 @@
 import { store } from '../services/state.js';
 
-let adminSubTab = 'compradores'; // 'compradores' | 'nuevo-sistema'
+let adminSubTab = 'compradores'; // 'compradores' | 'precios' | 'nuevo-sistema'
 
 export function renderAdminCompradoresView() {
   const user = store.currentUser;
-  if (user.rol_global !== 'ADMIN') {
+  if (user?.rol_global !== 'ADMIN') {
     return `
       <div class="container animate-fade-in" style="padding: 4rem 1rem; text-align: center;">
         <div style="background: rgba(244, 63, 94, 0.1); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: var(--radius-lg); padding: 3rem 2rem; max-width: 500px; margin: 0 auto;">
@@ -17,27 +17,32 @@ export function renderAdminCompradoresView() {
   }
 
   const buyers = store.getBuyersList();
+  const sistemas = store.sistemas;
 
   return `
-    <div class="container animate-fade-in">
-      <div class="section-header">
+    <div class="container animate-fade-in" style="padding-bottom: 4rem;">
+      <div class="section-header" style="margin-bottom: 2rem;">
         <div>
           <span class="badge badge-admin" style="margin-bottom: 0.5rem;">
             <i data-lucide="shield" style="width: 12px; height: 12px;"></i>
             Panel SuperAdmin (Franco)
           </span>
-          <h2 style="font-size: 1.8rem; font-weight: 800;">Control de Compradores & Nuevos Sistemas</h2>
-          <p style="font-size: 0.92rem;">Monitorea quién compró tus sistemas, su estado de uso y publica nuevos programas.</p>
+          <h2 style="font-size: 1.8rem; font-weight: 800;">Control de Compradores, Sistemas & Precios</h2>
+          <p style="font-size: 0.92rem; color: var(--text-muted);">Monitorea tus clientes, cambia los precios de tus sistemas y publica nuevo software.</p>
         </div>
 
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <button class="btn btn-sm ${adminSubTab === 'compradores' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('compradores')">
             <i data-lucide="users" style="width: 14px; height: 14px;"></i>
-            Compradores y Uso (${buyers.length})
+            Compradores (${buyers.length})
+          </button>
+          <button class="btn btn-sm ${adminSubTab === 'precios' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('precios')">
+            <i data-lucide="tag" style="width: 14px; height: 14px;"></i>
+            Catálogo & Precios (${sistemas.length})
           </button>
           <button class="btn btn-sm ${adminSubTab === 'nuevo-sistema' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('nuevo-sistema')">
             <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i>
-            Publicar Nuevo Sistema
+            Publicar Nuevo
           </button>
         </div>
       </div>
@@ -57,7 +62,13 @@ export function renderAdminCompradoresView() {
               </tr>
             </thead>
             <tbody>
-              ${buyers.map(b => {
+              ${buyers.length === 0 ? `
+                <tr>
+                  <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-dim);">
+                    Aún no hay compras registradas. Registra una cuenta de prueba y compra un sistema para ver el flujo.
+                  </td>
+                </tr>
+              ` : buyers.map(b => {
                 const fechaCompra = new Date(b.fecha_compra).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
                 const fechaAcceso = b.ultimo_acceso ? new Date(b.ultimo_acceso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Nunca';
 
@@ -106,27 +117,89 @@ export function renderAdminCompradoresView() {
             </tbody>
           </table>
         </div>
-      ` : `
-        <!-- TAB 2: FORMULARIO PARA PUBLICAR NUEVO SISTEMA -->
-        <div style="background: var(--bg-card); border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; max-width: 760px; margin: 0 auto;">
-          <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: #fff;">Publicar Nuevo Software en la Tienda</h3>
-          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.75rem;">Completa este formulario y el producto aparecerá inmediatamente en el catálogo sin tocar código HTML.</p>
+      ` : ''}
+
+      ${adminSubTab === 'precios' ? `
+        <!-- TAB 2: GESTIÓN DE PRECIOS DEL CATÁLOGO -->
+        <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.75rem; box-shadow: var(--shadow-md);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <div>
+              <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin-bottom: 0.2rem;">
+                Ajuste de Precios en Vivo
+              </h3>
+              <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">
+                Modifica el precio en dólares (USD) de cualquiera de tus sistemas. El cambio se aplica de inmediato en la tienda y en Neon Cloud.
+              </p>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem;">
+            ${sistemas.map(s => `
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.25rem; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: #f8fafc; gap: 1rem; flex-wrap: wrap;">
+                
+                <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 260px;">
+                  <img src="${s.banner_url || 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=800'}" alt="${s.titulo}" style="width: 56px; height: 56px; border-radius: var(--radius-sm); object-fit: cover;" />
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 0.4rem;">
+                      <strong style="font-size: 1.05rem; color: var(--text-main);">${s.titulo}</strong>
+                      <span class="badge badge-primary" style="font-size: 0.7rem;">${s.codigo}</span>
+                    </div>
+                    <span style="font-size: 0.82rem; color: var(--text-muted); display: block;">${s.url_base}</span>
+                  </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <div style="display: flex; align-items: center; gap: 0.35rem;">
+                    <span style="font-size: 0.9rem; font-weight: 800; color: var(--text-main);">$</span>
+                    <input 
+                      type="number" 
+                      id="price-input-${s.id_sistema}" 
+                      class="form-input" 
+                      style="width: 110px; font-weight: 800; font-size: 1.1rem; text-align: center; color: var(--primary); padding: 0.4rem;" 
+                      value="${s.precio}" 
+                      step="1"
+                    />
+                    <span style="font-size: 0.75rem; color: var(--text-dim); font-weight: 700;">USD</span>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    class="btn btn-primary btn-sm" 
+                    style="padding: 0.55rem 1rem;" 
+                    onclick="window.savePrice(${s.id_sistema})"
+                  >
+                    <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                    Guardar Precio
+                  </button>
+                </div>
+
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+
+      ${adminSubTab === 'nuevo-sistema' ? `
+        <!-- TAB 3: FORMULARIO PARA PUBLICAR NUEVO SISTEMA -->
+        <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; max-width: 760px; margin: 0 auto; box-shadow: var(--shadow-md);">
+          <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: var(--text-main); font-weight: 800;">Publicar Nuevo Software en la Tienda</h3>
+          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.75rem;">Completa este formulario y el producto aparecerá inmediatamente en el catálogo sin tocar código.</p>
 
           <form onsubmit="window.handleCreateSystem(event)">
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
               <div>
                 <label class="form-label">Título del Sistema:</label>
-                <input type="text" id="sys-title" class="form-input" placeholder="Ej: BarberShop Pro" required />
+                <input type="text" id="sys-title" class="form-input" placeholder="Ej: Gimnasio Pro" required />
               </div>
               <div>
                 <label class="form-label">Código Único (Slug):</label>
-                <input type="text" id="sys-code" class="form-input" placeholder="Ej: barbershop_v1" required />
+                <input type="text" id="sys-code" class="form-input" placeholder="Ej: gym_v1" required />
               </div>
             </div>
 
             <div style="margin-bottom: 1rem;">
               <label class="form-label">Descripción Corta (Tarjeta):</label>
-              <input type="text" id="sys-short-desc" class="form-input" placeholder="Gestión de turnos, caja y barberos." required />
+              <input type="text" id="sys-short-desc" class="form-input" placeholder="Control de socios, cuotas y torniquetes." required />
             </div>
 
             <div style="margin-bottom: 1rem;">
@@ -136,18 +209,18 @@ export function renderAdminCompradoresView() {
 
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
               <div>
-                <label class="form-label">Precio en USD (Oculto hasta el pago):</label>
-                <input type="number" step="0.01" id="sys-price" class="form-input" placeholder="35.00" required />
+                <label class="form-label">Precio en USD:</label>
+                <input type="number" step="0.01" id="sys-price" class="form-input" placeholder="80.00" required />
               </div>
               <div>
-                <label class="form-label">URL Base del Sistema Secundario:</label>
-                <input type="text" id="sys-url" class="form-input" placeholder="http://localhost:4004" required />
+                <label class="form-label">URL Base del Sistema:</label>
+                <input type="text" id="sys-url" class="form-input" placeholder="http://localhost:5175" required />
               </div>
             </div>
 
             <div style="margin-bottom: 1.5rem;">
               <label class="form-label">Características Clave (Separadas por comas):</label>
-              <input type="text" id="sys-features" class="form-input" placeholder="Agenda de turnos online, Control de comisiones, Recordatorios por WhatsApp" required />
+              <input type="text" id="sys-features" class="form-input" placeholder="Control de accesos con QR, Cobro de cuotas recurrente, Rutinas" required />
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
@@ -159,7 +232,8 @@ export function renderAdminCompradoresView() {
             </div>
           </form>
         </div>
-      `}
+      ` : ''}
+
     </div>
   `;
 }
@@ -167,6 +241,19 @@ export function renderAdminCompradoresView() {
 window.setAdminTab = (tab) => {
   adminSubTab = tab;
   store.notify();
+};
+
+window.savePrice = async (sistemaId) => {
+  const input = document.getElementById(`price-input-${sistemaId}`);
+  if (!input) return;
+
+  const newPrice = input.value;
+  try {
+    const updated = await store.updateSystemPrice(sistemaId, newPrice);
+    window.showToast(`💰 Precio de "${updated.titulo}" actualizado a $${updated.precio} USD`, 'success');
+  } catch (e) {
+    window.showToast(`Error: ${e.message}`, 'error');
+  }
 };
 
 window.handleCreateSystem = (e) => {
@@ -191,6 +278,6 @@ window.handleCreateSystem = (e) => {
   });
 
   window.showToast(`✅ Sistema "${title}" publicado en el catálogo exitosamente.`, 'success');
-  adminSubTab = 'compradores';
+  adminSubTab = 'precios';
   store.notify();
 };

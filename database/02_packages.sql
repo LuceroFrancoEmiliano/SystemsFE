@@ -732,3 +732,49 @@ BEGIN
     );
 END;
 $$;
+
+-- 3. Actualizar Datos o Precio de un Sistema Existente
+CREATE OR REPLACE FUNCTION pkg_admin.actualizar_sistema(
+    p_admin_id BIGINT,
+    p_id_sistema BIGINT,
+    p_precio NUMERIC,
+    p_titulo VARCHAR DEFAULT NULL,
+    p_descripcion_corta VARCHAR DEFAULT NULL,
+    p_url_base VARCHAR DEFAULT NULL,
+    p_activo BOOLEAN DEFAULT TRUE
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_admin usuarios%ROWTYPE;
+BEGIN
+    SELECT * INTO v_admin FROM usuarios WHERE id_usuario = p_admin_id AND rol_global = 'ADMIN';
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Acceso denegado: Se requieren permisos de SuperAdmin');
+    END IF;
+
+    UPDATE sistemas
+    SET 
+        precio = COALESCE(p_precio, precio),
+        titulo = COALESCE(p_titulo, titulo),
+        descripcion_corta = COALESCE(p_descripcion_corta, descripcion_corta),
+        url_base = COALESCE(p_url_base, url_base),
+        activo = COALESCE(p_activo, activo),
+        actualizado_en = CURRENT_TIMESTAMP
+    WHERE id_sistema = p_id_sistema;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Sistema no encontrado');
+    END IF;
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'mensaje', 'Sistema actualizado con éxito',
+        'sistema', (SELECT row_to_json(s) FROM sistemas s WHERE s.id_sistema = p_id_sistema)
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('ok', false, 'error', SQLERRM);
+END;
+$$;
