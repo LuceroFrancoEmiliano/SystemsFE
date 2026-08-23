@@ -151,6 +151,68 @@ BEGIN
 END;
 $$;
 
+-- 4. Registrar Nuevo Usuario (Sign Up)
+CREATE OR REPLACE FUNCTION pkg_auth.registrar_usuario(
+    p_nombre VARCHAR,
+    p_email VARCHAR,
+    p_password VARCHAR,
+    p_telefono VARCHAR DEFAULT ''
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_clean_email VARCHAR;
+    v_hash TEXT;
+    v_new_user usuarios%ROWTYPE;
+BEGIN
+    v_clean_email := LOWER(TRIM(p_email));
+
+    IF v_clean_email IS NULL OR v_clean_email = '' OR p_password IS NULL OR p_password = '' THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'El email y la contraseña son requeridos');
+    END IF;
+
+    IF LENGTH(p_password) < 6 THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'La contraseña debe tener al menos 6 caracteres');
+    END IF;
+
+    IF EXISTS(SELECT 1 FROM usuarios WHERE email = v_clean_email) THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Ya existe una cuenta registrada con este correo electrónico');
+    END IF;
+
+    -- Hashear contraseña
+    v_hash := crypt(p_password, gen_salt('bf', 10));
+
+    INSERT INTO usuarios (
+        email, nombre, password_hash, telefono,
+        avatar_url, rol_global, activo
+    ) VALUES (
+        v_clean_email,
+        COALESCE(TRIM(p_nombre), 'Usuario'),
+        v_hash,
+        COALESCE(p_telefono, ''),
+        'https://api.dicebear.com/7.x/bottts/svg?seed=' || v_clean_email,
+        'USER',
+        TRUE
+    ) RETURNING * INTO v_new_user;
+
+    RETURN jsonb_build_object(
+        'ok', true,
+        'mensaje', 'Cuenta creada con éxito',
+        'usuario', jsonb_build_object(
+            'id_usuario', v_new_user.id_usuario,
+            'email', v_new_user.email,
+            'nombre', v_new_user.nombre,
+            'avatar_url', v_new_user.avatar_url,
+            'rol_global', v_new_user.rol_global
+        )
+    );
+EXCEPTION WHEN OTHERS THEN
+    RETURN jsonb_build_object('ok', false, 'error', SQLERRM);
+END;
+$$;
+
 -- 2. Obtener Perfil del Usuario
 CREATE OR REPLACE FUNCTION pkg_auth.get_perfil(p_id_usuario BIGINT)
 RETURNS JSONB

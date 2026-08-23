@@ -67,6 +67,18 @@ app.post('/api/auth/login-password', async (req, res) => {
   res.status(result.ok ? 200 : 401).json(result);
 });
 
+// Registro de nueva cuenta de usuario (Sign Up)
+app.post('/api/auth/register', async (req, res) => {
+  const { nombre, email, password, telefono } = req.body;
+  const result = await callPackage('pkg_auth.registrar_usuario', [
+    nombre || 'Usuario',
+    email,
+    password,
+    telefono || ''
+  ]);
+  res.status(result.ok ? 201 : 400).json(result);
+});
+
 // Logout
 app.post('/api/auth/logout', (req, res) => {
   const { email } = req.body || {};
