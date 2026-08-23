@@ -95,7 +95,12 @@ class Store {
       const res = await fetch('http://localhost:3000/api/sistemas');
       const data = await res.json();
       if (data.ok && Array.isArray(data.sistemas)) {
-        this.sistemas = data.sistemas;
+        this.sistemas = data.sistemas.map(s => ({
+          ...s,
+          id_sistema: Number(s.id_sistema),
+          precio: parseFloat(s.precio) || 0,
+          activo: s.activo !== false
+        }));
         this.save();
         this.notify();
       }
