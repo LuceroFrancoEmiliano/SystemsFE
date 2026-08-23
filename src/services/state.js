@@ -31,6 +31,14 @@ class Store {
     this.sistemas = storedSystems ? JSON.parse(storedSystems) : [];
     this.licencias = storedLicenses ? JSON.parse(storedLicenses) : [];
     
+    // Configuración de cobro (Alias, CVU, Titular)
+    this.configPagos = JSON.parse(localStorage.getItem('systems_config_pagos_v1') || JSON.stringify({
+      alias_transferencia: 'emiliaponceg.mp',
+      cvu_transferencia: '0000003100085492019482',
+      titular: 'Emilia Ponce',
+      banco: 'Mercado Pago'
+    }));
+
     this.activeSimulatorSession = null;
     this.selectedCheckoutSystemId = null;
     this.checkoutStep = 1;
@@ -42,9 +50,44 @@ class Store {
     this.contactEmail = 'franco.soporte@systems.com';
     this.listeners = [];
 
-    // Notificar vista inicial al backend y cargar catálogo desde Neon
+    // Notificar vista inicial al backend y cargar catálogo + datos de cobro desde Neon
     this.notifyServerView('catalog');
     this.fetchSistemasFromBackend();
+    this.fetchPaymentConfig();
+  }
+
+  async fetchPaymentConfig() {
+    try {
+      const res = await fetch('http://localhost:3000/api/config/pagos');
+      const data = await res.json();
+      if (data.ok && data.config) {
+        this.configPagos = data.config;
+        this.save();
+        this.notify();
+      }
+    } catch (e) {}
+  }
+
+  async updatePaymentConfig(newConfig) {
+    this.configPagos = { ...this.configPagos, ...newConfig };
+    this.save();
+    this.notify();
+
+    try {
+      const res = await fetch('http://localhost:3000/api/admin/config/pagos', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(this.configPagos)
+      });
+      const data = await res.json();
+      if (data.ok && data.config) {
+        this.configPagos = data.config;
+        this.save();
+        this.notify();
+      }
+    } catch (e) {}
+
+    return this.configPagos;
   }
 
   async fetchSistemasFromBackend() {

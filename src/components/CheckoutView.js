@@ -228,17 +228,30 @@ export function renderCheckoutView() {
               </div>
 
               ${data.metodoPago === 'TRANSFERENCIA' ? `
-                <!-- DATOS DE TRANSFERENCIA BANCARIA DE FRANCO -->
+                <!-- DATOS DE TRANSFERENCIA BANCARIA DINÁMICOS -->
                 <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem;">
-                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-                    <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
-                    <strong style="font-size: 0.95rem; color: #166534;">Datos para Transferir el Pago:</strong>
+                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                      <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
+                      <strong style="font-size: 0.95rem; color: #166534;">Datos para Transferir el Pago:</strong>
+                    </div>
+                    <span class="badge badge-green" style="font-size: 0.7rem;">Cuentas Verificadas</span>
                   </div>
-                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.35rem;">
-                    <div><strong>Titular:</strong> Franco Emiliano Lucero (Systems)</div>
-                    <div><strong>Alias:</strong> <code style="background: #dcfce7; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 800;">franco.systems.mp</code></div>
-                    <div><strong>CVU / CBU:</strong> <code style="background: #dcfce7; padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">0000003100085492019482</code></div>
-                    <div><strong>Entidad:</strong> Mercado Pago / Banco</div>
+                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.45rem;">
+                    <div><strong>Titular:</strong> ${store.configPagos?.titular || 'Emilia Ponce'}</div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                      <span><strong>Alias:</strong> <code style="font-weight: 800; font-size: 0.95rem; color: #065f46;">${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}</code></span>
+                      <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}', 'Alias')">
+                        📋 Copiar
+                      </button>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                      <span><strong>CVU / CBU:</strong> <code style="font-family: monospace; font-size: 0.85rem; color: #065f46;">${store.configPagos?.cvu_transferencia || '0000003100085492019482'}</code></span>
+                      <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.cvu_transferencia || '0000003100085492019482'}', 'CVU')">
+                        📋 Copiar
+                      </button>
+                    </div>
+                    <div><strong>Entidad:</strong> ${store.configPagos?.banco || 'Mercado Pago'}</div>
                   </div>
                 </div>
               ` : ''}
@@ -391,8 +404,15 @@ window.submitCheckoutStep1 = (e) => {
 };
 
 window.onPaymentMethodChange = (method) => {
-  store.checkoutData.metodoPago = method;
-  store.notify();
+  store.updateCheckoutData({ metodoPago: method });
+};
+
+window.copyPaymentText = (text, label) => {
+  navigator.clipboard.writeText(text).then(() => {
+    window.showToast(`📋 ¡${label} copiado al portapapeles!`, 'success');
+  }).catch(() => {
+    window.showToast(`Copiado: ${text}`, 'info');
+  });
 };
 
 window.confirmFinalPurchase = () => {

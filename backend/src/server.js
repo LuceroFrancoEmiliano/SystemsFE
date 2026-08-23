@@ -250,7 +250,57 @@ app.get('/api/admin/compradores/:admin_id', async (req, res) => {
   const result = await callPackage('pkg_admin.listar_compradores_y_uso', [
     req.params.admin_id
   ]);
-  res.status(result.ok ? 200 : 403).json(result);
+  res.json(result);
+});
+
+// ----------------------------------------------------------------------------
+// 8. CONFIGURACIÓN DE COBROS Y PAGOS (ALIAS, CVU, TITULAR)
+// ----------------------------------------------------------------------------
+app.get('/api/config/pagos', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM configuracion_pagos ORDER BY id_config ASC LIMIT 1');
+    if (result.rows.length > 0) {
+      res.json({ ok: true, config: result.rows[0] });
+    } else {
+      res.json({
+        ok: true,
+        config: {
+          alias_transferencia: 'emiliaponceg.mp',
+          cvu_transferencia: '0000003100085492019482',
+          titular: 'Emilia Ponce',
+          banco: 'Mercado Pago'
+        }
+      });
+    }
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.put('/api/admin/config/pagos', async (req, res) => {
+  const { alias_transferencia, cvu_transferencia, titular, banco } = req.body;
+  try {
+    const result = await query(`
+      INSERT INTO configuracion_pagos (id_config, alias_transferencia, cvu_transferencia, titular, banco, actualizado_en)
+      VALUES (1, $1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (id_config) DO UPDATE SET
+        alias_transferencia = EXCLUDED.alias_transferencia,
+        cvu_transferencia = EXCLUDED.cvu_transferencia,
+        titular = EXCLUDED.titular,
+        banco = EXCLUDED.banco,
+        actualizado_en = CURRENT_TIMESTAMP
+      RETURNING *;
+    `, [
+      alias_transferencia || 'emiliaponceg.mp',
+      cvu_transferencia || '',
+      titular || '',
+      banco || 'Mercado Pago'
+    ]);
+
+    res.json({ ok: true, mensaje: 'Datos de cobro actualizados con éxito', config: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ----------------------------------------------------------------------------

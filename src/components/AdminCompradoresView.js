@@ -40,6 +40,10 @@ export function renderAdminCompradoresView() {
             <i data-lucide="tag" style="width: 14px; height: 14px;"></i>
             Catálogo & Precios (${sistemas.length})
           </button>
+          <button class="btn btn-sm ${adminSubTab === 'pagos' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('pagos')">
+            <i data-lucide="wallet" style="width: 14px; height: 14px;"></i>
+            Datos de Cobro (CBU/Alias)
+          </button>
           <button class="btn btn-sm ${adminSubTab === 'nuevo-sistema' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('nuevo-sistema')">
             <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i>
             Publicar Nuevo
@@ -179,8 +183,82 @@ export function renderAdminCompradoresView() {
         </div>
       ` : ''}
 
+      ${adminSubTab === 'pagos' ? `
+        <!-- TAB 3: CONFIGURACIÓN DE CUENTAS DE COBRO (CBU/ALIAS) -->
+        <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; max-width: 760px; margin: 0 auto; box-shadow: var(--shadow-md);">
+          <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+            <div style="width: 42px; height: 42px; border-radius: var(--radius-md); background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="wallet" style="width: 22px; height: 22px;"></i>
+            </div>
+            <div>
+              <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0;">Datos de Cobro por Transferencia</h3>
+              <span style="font-size: 0.84rem; color: var(--text-muted);">Estos son los datos que verán tus clientes al momento de pagar en el checkout.</span>
+            </div>
+          </div>
+
+          <form onsubmit="window.handleSavePaymentConfig(event)" style="margin-top: 1.5rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+              <div>
+                <label class="form-label">Alias de Mercado Pago / Banco:</label>
+                <input 
+                  type="text" 
+                  id="pay-alias" 
+                  class="form-input" 
+                  style="font-weight: 800; color: #065f46; background: #f0fdf4;" 
+                  value="${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label class="form-label">CBU / CVU (22 Dígitos):</label>
+                <input 
+                  type="text" 
+                  id="pay-cvu" 
+                  class="form-input" 
+                  style="font-family: var(--font-mono); font-size: 0.9rem;" 
+                  value="${store.configPagos?.cvu_transferencia || '0000003100085492019482'}" 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+              <div>
+                <label class="form-label">Nombre del Titular de la Cuenta:</label>
+                <input 
+                  type="text" 
+                  id="pay-titular" 
+                  class="form-input" 
+                  value="${store.configPagos?.titular || 'Emilia Ponce'}" 
+                  required 
+                />
+              </div>
+
+              <div>
+                <label class="form-label">Entidad Bancaria o Billetera:</label>
+                <input 
+                  type="text" 
+                  id="pay-banco" 
+                  class="form-input" 
+                  value="${store.configPagos?.banco || 'Mercado Pago'}" 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+              <button type="submit" class="btn btn-success" style="padding: 0.75rem 1.5rem;">
+                <i data-lucide="check"></i>
+                Guardar Datos de Cobro
+              </button>
+            </div>
+          </form>
+        </div>
+      ` : ''}
+
       ${adminSubTab === 'nuevo-sistema' ? `
-        <!-- TAB 3: FORMULARIO PARA PUBLICAR NUEVO SISTEMA -->
+        <!-- TAB 4: FORMULARIO PARA PUBLICAR NUEVO SISTEMA -->
         <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; max-width: 760px; margin: 0 auto; box-shadow: var(--shadow-md);">
           <h3 style="font-size: 1.3rem; margin-bottom: 0.5rem; color: var(--text-main); font-weight: 800;">Publicar Nuevo Software en la Tienda</h3>
           <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1.75rem;">Completa este formulario y el producto aparecerá inmediatamente en el catálogo sin tocar código.</p>
@@ -253,6 +331,26 @@ window.savePrice = async (sistemaId) => {
     window.showToast(`💰 Precio de "${updated.titulo}" actualizado a $${updated.precio} USD`, 'success');
   } catch (e) {
     window.showToast(`Error: ${e.message}`, 'error');
+  }
+};
+
+window.handleSavePaymentConfig = async (e) => {
+  e.preventDefault();
+  const alias = document.getElementById('pay-alias').value.trim();
+  const cvu = document.getElementById('pay-cvu').value.trim();
+  const titular = document.getElementById('pay-titular').value.trim();
+  const banco = document.getElementById('pay-banco').value.trim();
+
+  try {
+    await store.updatePaymentConfig({
+      alias_transferencia: alias,
+      cvu_transferencia: cvu,
+      titular,
+      banco
+    });
+    window.showToast('✅ Datos de cobro (Alias/CVU) guardados exitosamente en Neon Cloud', 'success');
+  } catch (err) {
+    window.showToast(`Error: ${err.message}`, 'error');
   }
 };
 

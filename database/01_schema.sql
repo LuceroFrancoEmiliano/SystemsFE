@@ -100,6 +100,7 @@ CREATE TABLE transacciones (
 );
 
 CREATE INDEX idx_transacciones_usuario ON transacciones(id_usuario);
+CREATE INDEX idx_transacciones_licencia ON transacciones(id_licencia);
 CREATE INDEX idx_transacciones_fecha ON transacciones(creado_en DESC);
 
 -- ----------------------------------------------------------------------------
