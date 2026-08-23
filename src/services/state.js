@@ -30,6 +30,7 @@ class Store {
 
     this.sistemas = storedSystems ? JSON.parse(storedSystems) : [];
     this.licencias = storedLicenses ? JSON.parse(storedLicenses) : [];
+    this.buyersList = [];
     
     // Configuración de cobro (Alias, CVU, Titular)
     this.configPagos = JSON.parse(localStorage.getItem('systems_config_pagos_v1') || JSON.stringify({
@@ -54,6 +55,7 @@ class Store {
     this.notifyServerView('catalog');
     this.fetchSistemasFromBackend();
     this.fetchPaymentConfig();
+    this.fetchBuyersListFromBackend();
   }
 
   async fetchPaymentConfig() {
@@ -418,22 +420,33 @@ class Store {
     };
   }
 
+  async fetchBuyersListFromBackend() {
+    if (!this.currentUser || this.currentUser.rol_global !== 'ADMIN') return;
+    try {
+      const res = await fetch(`http://localhost:3000/api/admin/compradores/${this.currentUser.id_usuario}`);
+      const data = await res.json();
+      if (data.ok && Array.isArray(data.compradores)) {
+        this.buyersList = data.compradores;
+        this.notify();
+      }
+    } catch (e) {}
+  }
+
   getBuyersList() {
+    if (this.buyersList && this.buyersList.length > 0) {
+      return this.buyersList;
+    }
+
     return this.licencias.map(l => {
-      const user = this.currentUser || {
-        nombre: 'Cliente',
-        email: 'cliente@empresa.com',
-        avatar_url: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Client'
-      };
       const sys = this.sistemas.find(s => s.id_sistema === l.id_sistema) || {
         titulo: 'Sistema'
       };
 
       return {
         id_licencia: l.id_licencia,
-        cliente_nombre: user.nombre,
-        cliente_email: user.email,
-        cliente_avatar: user.avatar_url,
+        cliente_nombre: l.cliente_nombre || 'Cliente Comprador',
+        cliente_email: l.cliente_email || 'cliente@empresa.com',
+        cliente_avatar: l.cliente_avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${l.slug_empresa}`,
         sistema_titulo: sys.titulo,
         nombre_empresa: l.nombre_empresa,
         slug_empresa: l.slug_empresa,
