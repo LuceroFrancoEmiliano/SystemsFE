@@ -331,7 +331,7 @@ class Store {
     return sys;
   }
 
-  buySystem({ sistemaId, nombreEmpresa, slugEmpresa, metodoPago }) {
+  async buySystem({ sistemaId, nombreEmpresa, slugEmpresa, metodoPago, referenciaPago }) {
     if (!this.isAuthenticated || !this.currentUser) {
       throw new Error('Debes estar autenticado para comprar');
     }
@@ -339,8 +339,31 @@ class Store {
     const system = this.sistemas.find(s => s.id_sistema === Number(sistemaId));
     if (!system) throw new Error('Sistema no encontrado');
 
+    let createdId = Date.now();
+
+    // Notificar y guardar en Neon Cloud
+    try {
+      const res = await fetch('http://localhost:3000/api/ventas/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_usuario: this.currentUser.id_usuario,
+          id_sistema: system.id_sistema,
+          nombre_empresa: nombreEmpresa,
+          slug_empresa: slugEmpresa,
+          metodo_pago: metodoPago,
+          referencia_pago: referenciaPago || '',
+          monto: system.precio
+        })
+      });
+      const data = await res.json();
+      if (data.ok && data.id_licencia) {
+        createdId = data.id_licencia;
+      }
+    } catch (e) {}
+
     const newLicencia = {
-      id_licencia: Date.now(),
+      id_licencia: createdId,
       id_usuario: this.currentUser.id_usuario,
       id_sistema: system.id_sistema,
       nombre_empresa: nombreEmpresa,
@@ -352,21 +375,8 @@ class Store {
       en_uso: true
     };
 
-    // Notificar al backend
-    fetch('http://localhost:3000/api/ventas/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id_usuario: this.currentUser.id_usuario,
-        id_sistema: system.id_sistema,
-        nombre_empresa: nombreEmpresa,
-        slug_empresa: slugEmpresa,
-        metodo_pago: metodoPago,
-        monto: system.precio
-      })
-    }).catch(() => {});
-
     this.licencias.unshift(newLicencia);
+    this.save();
     this.notify();
     return newLicencia;
   }

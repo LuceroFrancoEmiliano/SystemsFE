@@ -1,5 +1,19 @@
 import { store } from '../services/state.js';
 
+let cardData = {
+  number: '',
+  name: '',
+  expiry: '',
+  cvv: '',
+  dni: '',
+  installments: '1'
+};
+
+let transferData = {
+  comprobante: '',
+  origen: 'Mercado Pago'
+};
+
 export function renderCheckoutView() {
   const user = store.currentUser;
   if (!user) {
@@ -11,13 +25,26 @@ export function renderCheckoutView() {
           <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">Para registrar la empresa a tu nombre y configurar tu subdominio privado.</p>
           <button class="btn btn-primary" onclick="window.navigate('login')">
             <i data-lucide="log-in" style="width: 16px; height: 16px;"></i>
-            Iniciar Sesión
+            Iniciar Sesión o Registrarse
           </button>
         </div>
       </div>
     `;
   }
+
   const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
+  if (!sys) {
+    return `
+      <div class="container animate-fade-in" style="max-width: 600px; margin: 3rem auto; text-align: center;">
+        <div class="card" style="padding: 3rem 2rem;">
+          <h3>No hay sistema seleccionado</h3>
+          <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Por favor selecciona un producto desde el catálogo.</p>
+          <button class="btn btn-primary" onclick="window.navigate('catalog')">Ir al Catálogo</button>
+        </div>
+      </div>
+    `;
+  }
+
   const step = store.checkoutStep;
   const data = store.checkoutData;
 
@@ -62,12 +89,12 @@ export function renderCheckoutView() {
               2
             </div>
             <div>
-              <strong style="font-size: 0.88rem; color: ${step >= 2 ? 'var(--text-main)' : 'var(--text-dim)'}; display: block;">Método de Pago</strong>
-              <span style="font-size: 0.72rem; color: var(--text-dim);">Inversión y forma de pago</span>
+              <strong style="font-size: 0.88rem; color: ${step >= 2 ? 'var(--text-main)' : 'var(--text-dim)'}; display: block;">Método de Pago & Datos</strong>
+              <span style="font-size: 0.72rem; color: var(--text-dim);">Ingresa tus credenciales</span>
             </div>
           </div>
 
-          <div style="flex-grow: 1; height: 2px; background: ${step >= 3 ? 'var(--primary)' : '#e2e8f0'}; margin: 0 1rem;"></div>
+          <div style="flex-grow: 1; height: 2px; background: ${step >= 3 ? 'var(--accent-emerald)' : '#e2e8f0'}; margin: 0 1rem;"></div>
 
           <!-- Step 3 Indicator -->
           <div style="display: flex; align-items: center; gap: 0.75rem; z-index: 2;">
@@ -76,7 +103,7 @@ export function renderCheckoutView() {
             </div>
             <div>
               <strong style="font-size: 0.88rem; color: ${step >= 3 ? 'var(--text-main)' : 'var(--text-dim)'}; display: block;">Confirmación</strong>
-              <span style="font-size: 0.72rem; color: var(--text-dim);">Activación de licencia</span>
+              <span style="font-size: 0.72rem; color: var(--text-dim);">Activación instantánea</span>
             </div>
           </div>
 
@@ -97,63 +124,43 @@ export function renderCheckoutView() {
                 Configuración de tu Empresa
               </h2>
               <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem;">
-                Ingresa el nombre con el que operarás. Con estos datos se generará automáticamente tu entorno web privado.
+                Ingresa el nombre con el que operarás. Con estos datos se generará automáticamente tu entorno web privado y tu base de datos dedicada.
               </p>
 
-              <form onsubmit="window.submitCheckoutStep1(event)">
-                <!-- Datos del Administrador -->
-                <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.75rem;">
-                  <span style="font-size: 0.72rem; text-transform: uppercase; font-weight: 700; color: var(--text-dim); display: block; margin-bottom: 0.6rem;">Titular de la Cuenta (Administrador):</span>
-                  <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <img src="${user.avatar_url}" style="width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--primary-light);" />
-                    <div>
-                      <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">${user.nombre}</strong>
-                      <span style="font-size: 0.8rem; color: var(--text-muted);">${user.email}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Input Nombre de la Empresa -->
-                <div class="form-group" style="margin-bottom: 1.75rem;">
-                  <label class="form-label" for="checkout-company-input">
-                    Nombre de tu Empresa o Negocio:
-                  </label>
+              <form onsubmit="window.handleStep1Submit(event)">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                  <label class="form-label" for="checkout-company-name">Nombre Comercial de tu Empresa:</label>
                   <input 
                     type="text" 
-                    id="checkout-company-input" 
+                    id="checkout-company-name" 
                     class="form-input" 
-                    placeholder="Ej: Sodería San Martín, Titan Gym, etc." 
-                    value="${data.nombreEmpresa}"
-                    oninput="window.onCheckoutCompanyInput(this.value)"
-                    required
+                    placeholder="Ej: Sodería San Martín" 
+                    value="${data.nombreEmpresa}" 
+                    required 
                     autofocus
+                    oninput="window.onCheckoutCompanyInput(this.value)"
                   />
+                </div>
 
-                  <!-- Previsualización del Subdominio -->
-                  <div class="slug-preview-box" style="margin-top: 0.85rem; padding: 1rem;">
-                    <div>
-                      <span style="font-size: 0.72rem; color: var(--text-dim); display: block; text-transform: uppercase; font-weight: 700;">Tu enlace de acceso exclusivo al sistema:</span>
-                      <span class="slug-url-text" id="checkout-slug-preview" style="font-size: 0.95rem; font-weight: 700;">
-                        https://${slugCalculado ? slugCalculado : 'tu-empresa'}.misistema.com
-                      </span>
-                    </div>
-                    <span class="slug-status-badge">
-                      <i data-lucide="check-circle-2" style="width: 14px; height: 14px; display: inline;"></i> Nombre Válido
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                  <label class="form-label">Subdominio Web Dedicado:</label>
+                  <div style="display: flex; align-items: center; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 0.65rem 1rem;">
+                    <span style="font-family: var(--font-mono); font-weight: 700; color: var(--primary); font-size: 1rem;" id="slug-preview">
+                      ${slugCalculado || 'tu-empresa'}
                     </span>
+                    <span style="color: var(--text-dim); font-size: 0.9rem; font-weight: 600;">.misistema.com</span>
                   </div>
                 </div>
 
-                <!-- Aclaración de permisos de Administrador -->
-                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1rem 1.25rem; margin-bottom: 2rem;">
-                  <div style="display: flex; gap: 0.75rem;">
-                    <i data-lucide="shield-check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; margin-top: 2px;"></i>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem; display: flex; gap: 0.75rem; align-items: flex-start;">
+                  <i data-lucide="shield-check" style="width: 20px; height: 20px; color: var(--primary); flex-shrink: 0; margin-top: 2px;"></i>
+                  <div>
                     <p style="font-size: 0.84rem; color: #1e3a8a; margin: 0; line-height: 1.5;">
-                      <strong>Serás el Administrador Propietario de tu sistema:</strong> Podrás crear las cuentas de usuarios y empleados que quieras para tu empresa (cajeros, repartidores, operarios) sin costo adicional y asignarles roles.
+                      <strong>Serás el Administrador Propietario de tu sistema:</strong> Tendrás tu base de datos propia, podrás dar de alta choferes y clientes, y acceder con tu cuenta central sin contraseñas extra.
                     </p>
                   </div>
                 </div>
 
-                <!-- Botones de Acción -->
                 <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                   <button type="submit" class="btn btn-primary" id="btn-step1-next" ${slugCalculado.length < 3 ? 'disabled' : ''}>
                     Continuar al Método de Pago
@@ -165,61 +172,60 @@ export function renderCheckoutView() {
           ` : ''}
 
           ${step === 2 ? `
-            <!-- PASO 2: MÉTODO DE PAGO Y PRECIO REVELADO -->
+            <!-- PASO 2: MÉTODO DE PAGO Y CREDENCIALES DEL COMPRADOR -->
             <div class="animate-fade-in">
               <span class="badge badge-primary" style="margin-bottom: 0.5rem;">Paso 2 de 3</span>
               <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 0.35rem; color: var(--text-main);">
-                Método de Pago e Inversión
+                Método de Pago & Credenciales
               </h2>
-              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem;">
-                Selecciona la forma de pago preferida para activar la licencia de tu empresa.
+              <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
+                Selecciona tu medio de pago e ingresa tus datos para procesar la transacción.
               </p>
 
               <!-- CAJA DESTACADA CON EL PRECIO -->
-              <div class="checkout-price-reveal" style="padding: 1.5rem; margin-bottom: 2rem;">
+              <div class="checkout-price-reveal" style="padding: 1.25rem 1.5rem; margin-bottom: 1.5rem;">
                 <div>
                   <span style="font-size: 0.75rem; text-transform: uppercase; color: var(--primary); font-weight: 800; display: block; letter-spacing: 0.05em;">Inversión de Licencia Web</span>
                   <strong style="font-size: 1.1rem; color: var(--text-main);">${sys.titulo}</strong>
-                  <span style="font-size: 0.82rem; color: var(--text-muted); display: block;">Acceso de por vida + Creación de usuarios ilimitada</span>
                 </div>
                 <div style="text-align: right;">
-                  <div class="price-amount" style="font-size: 2.2rem; line-height: 1;">$${sys.precio.toFixed(2)}</div>
+                  <div class="price-amount" style="font-size: 2rem; line-height: 1;">$${sys.precio.toFixed(2)}</div>
                   <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700;">${sys.moneda} (Pago Único)</span>
                 </div>
               </div>
 
               <!-- Selector de Métodos de Pago -->
               <label class="form-label" style="margin-bottom: 0.75rem;">Elige tu Forma de Pago:</label>
-              <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+              <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
                 
-                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'MERCADO_PAGO' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'MERCADO_PAGO' ? 'var(--primary)' : '#e2e8f0'}; padding: 1rem 1.25rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
+                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'MERCADO_PAGO' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'MERCADO_PAGO' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="radio" name="payment_method" value="MERCADO_PAGO" ${data.metodoPago === 'MERCADO_PAGO' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">Mercado Pago / Tarjetas de Débito y Crédito</strong>
-                      <span style="font-size: 0.8rem; color: var(--text-muted);">Aprobación instantánea con webhook seguro</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Tarjeta de Débito / Crédito (Mercado Pago)</strong>
+                      <span style="font-size: 0.78rem; color: var(--text-muted);">Procesamiento seguro instantáneo</span>
                     </div>
                   </div>
                   <i data-lucide="credit-card" style="width: 20px; height: 20px; color: var(--primary);"></i>
                 </label>
 
-                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TRANSFERENCIA' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TRANSFERENCIA' ? 'var(--primary)' : '#e2e8f0'}; padding: 1rem 1.25rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
+                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TRANSFERENCIA' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TRANSFERENCIA' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="radio" name="payment_method" value="TRANSFERENCIA" ${data.metodoPago === 'TRANSFERENCIA' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">Transferencia Bancaria Inmediata</strong>
-                      <span style="font-size: 0.8rem; color: var(--text-muted);">Envío de comprobante automático</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Transferencia Bancaria Inmediata</strong>
+                      <span style="font-size: 0.78rem; color: var(--text-muted);">Transferencia directa por CVU / Alias</span>
                     </div>
                   </div>
-                  <i data-lucide="building-2" style="width: 20px; height: 20px; color: var(--text-dim);"></i>
+                  <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
                 </label>
 
-                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TEST' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TEST' ? 'var(--primary)' : '#e2e8f0'}; padding: 1rem 1.25rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
+                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TEST' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TEST' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="radio" name="payment_method" value="TEST" ${data.metodoPago === 'TEST' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.95rem; display: block;">Prueba Inmediata (Modo Demo)</strong>
-                      <span style="font-size: 0.8rem; color: var(--accent-emerald); font-weight: 600;">Activación simulada instantánea para testeo</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Prueba Inmediata (Modo Demo)</strong>
+                      <span style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 600;">Activación simulada instantánea para testeo</span>
                     </div>
                   </div>
                   <i data-lucide="zap" style="width: 20px; height: 20px; color: var(--accent-amber);"></i>
@@ -227,25 +233,116 @@ export function renderCheckoutView() {
 
               </div>
 
+              <!-- FORMULARIO DE TARJETA SI SELECCIONA MERCADO PAGO -->
+              ${data.metodoPago === 'MERCADO_PAGO' ? `
+                <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 2rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
+                    <i data-lucide="credit-card" style="width: 18px; height: 18px; color: var(--primary);"></i>
+                    <strong style="font-size: 0.95rem; color: var(--text-main);">Ingresa los Datos de tu Tarjeta:</strong>
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="form-label" style="font-size: 0.82rem;">Número de Tarjeta:</label>
+                    <input 
+                      type="text" 
+                      id="card-number" 
+                      class="form-input" 
+                      placeholder="4500 1234 5678 9010" 
+                      maxlength="19" 
+                      value="${cardData.number}"
+                      oninput="window.handleCardNumberInput(this)"
+                      required
+                    />
+                  </div>
+
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label class="form-label" style="font-size: 0.82rem;">Nombre del Titular (como figura en el plástico):</label>
+                    <input 
+                      type="text" 
+                      id="card-name" 
+                      class="form-input" 
+                      placeholder="Ej: JUAN PEREZ" 
+                      value="${cardData.name || user.nombre}"
+                      oninput="cardData.name = this.value.toUpperCase()"
+                      required
+                    />
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+                    <div>
+                      <label class="form-label" style="font-size: 0.82rem;">Vencimiento (MM/AA):</label>
+                      <input 
+                        type="text" 
+                        id="card-expiry" 
+                        class="form-input" 
+                        placeholder="12/28" 
+                        maxlength="5" 
+                        value="${cardData.expiry}"
+                        oninput="window.handleCardExpiryInput(this)"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label class="form-label" style="font-size: 0.82rem;">Código de Seguridad (CVV):</label>
+                      <input 
+                        type="password" 
+                        id="card-cvv" 
+                        class="form-input" 
+                        placeholder="•••" 
+                        maxlength="4" 
+                        value="${cardData.cvv}"
+                        oninput="cardData.cvv = this.value"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
+                    <div>
+                      <label class="form-label" style="font-size: 0.82rem;">DNI / Documento:</label>
+                      <input 
+                        type="text" 
+                        id="card-dni" 
+                        class="form-input" 
+                        placeholder="38123456" 
+                        value="${cardData.dni}"
+                        oninput="cardData.dni = this.value"
+                      />
+                    </div>
+
+                    <div>
+                      <label class="form-label" style="font-size: 0.82rem;">Plan de Cuotas:</label>
+                      <select class="form-input" id="card-installments" onchange="cardData.installments = this.value">
+                        <option value="1">1 pago de $${sys.precio.toFixed(2)} USD</option>
+                        <option value="3">3 cuotas fijas de $${(sys.precio / 3).toFixed(2)} USD</option>
+                        <option value="6">6 cuotas fijas de $${(sys.precio / 6).toFixed(2)} USD</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ` : ''}
+
+              <!-- DATOS DE TRANSFERENCIA SI SELECCIONA TRANSFERENCIA BANCARIA -->
               ${data.metodoPago === 'TRANSFERENCIA' ? `
-                <!-- DATOS DE TRANSFERENCIA BANCARIA DINÁMICOS -->
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem;">
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
                   <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                       <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
-                      <strong style="font-size: 0.95rem; color: #166534;">Datos para Transferir el Pago:</strong>
+                      <strong style="font-size: 0.95rem; color: #166534;">Transfiere el importe a esta cuenta:</strong>
                     </div>
-                    <span class="badge badge-green" style="font-size: 0.7rem;">Cuentas Verificadas</span>
+                    <span class="badge badge-green" style="font-size: 0.7rem;">Oficial Systems</span>
                   </div>
-                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.45rem;">
+
+                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem;">
                     <div><strong>Titular:</strong> ${store.configPagos?.titular || 'Emilia Ponce'}</div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.4rem 0.65rem; border-radius: 6px;">
                       <span><strong>Alias:</strong> <code style="font-weight: 800; font-size: 0.95rem; color: #065f46;">${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}</code></span>
                       <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}', 'Alias')">
                         📋 Copiar
                       </button>
                     </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.35rem 0.65rem; border-radius: 6px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.4rem 0.65rem; border-radius: 6px;">
                       <span><strong>CVU / CBU:</strong> <code style="font-family: monospace; font-size: 0.85rem; color: #065f46;">${store.configPagos?.cvu_transferencia || '0000003100085492019482'}</code></span>
                       <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.cvu_transferencia || '0000003100085492019482'}', 'CVU')">
                         📋 Copiar
@@ -253,16 +350,30 @@ export function renderCheckoutView() {
                     </div>
                     <div><strong>Entidad:</strong> ${store.configPagos?.banco || 'Mercado Pago'}</div>
                   </div>
+
+                  <!-- Campos de comprobante -->
+                  <div style="border-top: 1px dashed #86efac; padding-top: 0.9rem;">
+                    <label class="form-label" style="font-size: 0.82rem; color: #14532d;">N° de Operación / Comprobante de Transferencia:</label>
+                    <input 
+                      type="text" 
+                      id="transfer-ref" 
+                      class="form-input" 
+                      placeholder="Ej: Transf #948201 / Op 38472910" 
+                      value="${transferData.comprobante}"
+                      oninput="transferData.comprobante = this.value"
+                      required
+                    />
+                  </div>
                 </div>
               ` : ''}
 
               <!-- Botones de Navegación -->
-              <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
                 <button type="button" class="btn btn-secondary" onclick="store.setCheckoutStep(1)">
                   <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
                   Paso Anterior
                 </button>
-                <button type="button" class="btn btn-primary" onclick="store.setCheckoutStep(3)">
+                <button type="button" class="btn btn-primary" onclick="window.validateStep2AndContinue()">
                   Continuar a la Confirmación
                   <i data-lucide="arrow-right" style="width: 15px; height: 15px;"></i>
                 </button>
@@ -295,7 +406,7 @@ export function renderCheckoutView() {
                 </div>
 
                 <div style="display: flex; justify-content: space-between; padding-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 0.85rem; font-size: 0.9rem;">
-                  <span style="color: var(--text-dim);">Enlace Dedicado:</span>
+                  <span style="color: var(--text-dim);">Subdominio Privado:</span>
                   <span style="font-family: var(--font-mono); font-weight: 700; color: var(--accent-cyan);">${slugCalculado}.misistema.com</span>
                 </div>
 
@@ -305,8 +416,10 @@ export function renderCheckoutView() {
                 </div>
 
                 <div style="display: flex; justify-content: space-between; padding-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 0.85rem; font-size: 0.9rem;">
-                  <span style="color: var(--text-dim);">Método de Pago:</span>
-                  <span style="color: var(--primary); font-weight: 700;">${data.metodoPago === 'MERCADO_PAGO' ? 'Mercado Pago' : data.metodoPago === 'TRANSFERENCIA' ? 'Transferencia Bancaria' : 'Modo Prueba / Demo'}</span>
+                  <span style="color: var(--text-dim);">Medio de Pago:</span>
+                  <span style="color: var(--primary); font-weight: 700;">
+                    ${data.metodoPago === 'MERCADO_PAGO' ? `💳 Tarjeta terminada en ${cardData.number.slice(-4) || '****'} (${cardData.installments || 1} pago/s)` : data.metodoPago === 'TRANSFERENCIA' ? `🏦 Transferencia Ref: ${transferData.comprobante || 'Confirmada'}` : '⚡ Modo Prueba / Demo'}
+                  </span>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; font-size: 1.1rem;">
@@ -322,9 +435,9 @@ export function renderCheckoutView() {
                   <i data-lucide="arrow-left" style="width: 15px; height: 15px;"></i>
                   Paso Anterior
                 </button>
-                <button type="button" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1.05rem;" onclick="window.confirmFinalPurchase()">
+                <button type="button" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1.05rem;" id="btn-confirm-pay" onclick="window.confirmFinalPurchase()">
                   <i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i>
-                  Confirmar y Activar Sistema
+                  Confirmar Pago y Activar Sistema
                 </button>
               </div>
 
@@ -336,7 +449,7 @@ export function renderCheckoutView() {
         <!-- Columna Derecha: Tarjeta Resumen del Producto -->
         <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 1.5rem; box-shadow: var(--shadow-sm); position: sticky; top: 100px;">
           <div style="height: 140px; border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 1rem; position: relative;">
-            <img src="${sys.banner_url}" alt="${sys.titulo}" style="width: 100%; height: 100%; object-fit: cover;" />
+            <img src="${sys.banner_url || 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=800'}" alt="${sys.titulo}" style="width: 100%; height: 100%; object-fit: cover;" />
             <div style="position: absolute; inset: 0; background: linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 100%);"></div>
             <span class="badge badge-primary" style="position: absolute; bottom: 0.75rem; left: 0.75rem; background: #fff;">
               <i data-lucide="${sys.icono || 'box'}" style="width: 12px; height: 12px;"></i>
@@ -372,6 +485,7 @@ export function renderCheckoutView() {
   `;
 }
 
+// Handlers
 window.onCheckoutCompanyInput = (val) => {
   const slug = val
     .toLowerCase()
@@ -380,12 +494,14 @@ window.onCheckoutCompanyInput = (val) => {
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
 
-  store.checkoutData.nombreEmpresa = val;
-  store.checkoutData.slugEmpresa = slug;
+  store.updateCheckoutData({
+    nombreEmpresa: val,
+    slugEmpresa: slug
+  });
 
-  const preview = document.getElementById('checkout-slug-preview');
+  const preview = document.getElementById('slug-preview');
   if (preview) {
-    preview.textContent = `https://${slug ? slug : 'tu-empresa'}.misistema.com`;
+    preview.innerText = slug || 'tu-empresa';
   }
 
   const nextBtn = document.getElementById('btn-step1-next');
@@ -394,10 +510,11 @@ window.onCheckoutCompanyInput = (val) => {
   }
 };
 
-window.submitCheckoutStep1 = (e) => {
+window.handleStep1Submit = (e) => {
   e.preventDefault();
-  if (!store.checkoutData.slugEmpresa || store.checkoutData.slugEmpresa.length < 3) {
-    window.showToast('Por favor escribe un nombre de empresa válido', 'error');
+  const name = document.getElementById('checkout-company-name').value.trim();
+  if (name.length < 3) {
+    window.showToast('El nombre de empresa debe tener al menos 3 letras', 'error');
     return;
   }
   store.setCheckoutStep(2);
@@ -405,6 +522,50 @@ window.submitCheckoutStep1 = (e) => {
 
 window.onPaymentMethodChange = (method) => {
   store.updateCheckoutData({ metodoPago: method });
+};
+
+window.handleCardNumberInput = (input) => {
+  let val = input.value.replace(/\D/g, '').substring(0, 16);
+  let formatted = val.match(/.{1,4}/g)?.join(' ') || val;
+  input.value = formatted;
+  cardData.number = formatted;
+};
+
+window.handleCardExpiryInput = (input) => {
+  let val = input.value.replace(/\D/g, '').substring(0, 4);
+  if (val.length >= 2) {
+    val = val.substring(0, 2) + '/' + val.substring(2);
+  }
+  input.value = val;
+  cardData.expiry = val;
+};
+
+window.validateStep2AndContinue = () => {
+  const metodo = store.checkoutData.metodoPago;
+
+  if (metodo === 'MERCADO_PAGO') {
+    if (!cardData.number || cardData.number.replace(/\s/g, '').length < 15) {
+      window.showToast('Por favor ingresa un número de tarjeta válido (16 dígitos)', 'error');
+      return;
+    }
+    if (!cardData.expiry || cardData.expiry.length < 5) {
+      window.showToast('Por favor ingresa el vencimiento (MM/AA)', 'error');
+      return;
+    }
+    if (!cardData.cvv || cardData.cvv.length < 3) {
+      window.showToast('Por favor ingresa el código CVV de seguridad', 'error');
+      return;
+    }
+  } else if (metodo === 'TRANSFERENCIA') {
+    const ref = document.getElementById('transfer-ref')?.value.trim();
+    if (!ref) {
+      window.showToast('Por favor ingresa el número o referencia del comprobante de transferencia', 'error');
+      return;
+    }
+    transferData.comprobante = ref;
+  }
+
+  store.setCheckoutStep(3);
 };
 
 window.copyPaymentText = (text, label) => {
@@ -415,21 +576,36 @@ window.copyPaymentText = (text, label) => {
   });
 };
 
-window.confirmFinalPurchase = () => {
-  try {
-    const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
-    const data = store.checkoutData;
+window.confirmFinalPurchase = async () => {
+  const btn = document.getElementById('btn-confirm-pay');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = 'Procesando pago y creando base de datos...';
+  }
 
-    store.buySystem({
+  const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
+  const refPago = store.checkoutData.metodoPago === 'MERCADO_PAGO'
+    ? `Tarjeta **** ${cardData.number.slice(-4)}`
+    : store.checkoutData.metodoPago === 'TRANSFERENCIA'
+    ? `Transf ${transferData.comprobante}`
+    : 'Demo Test';
+
+  try {
+    const lic = await store.buySystem({
       sistemaId: sys.id_sistema,
-      nombreEmpresa: data.nombreEmpresa,
-      slugEmpresa: data.slugEmpresa,
-      metodoPago: data.metodoPago
+      nombreEmpresa: store.checkoutData.nombreEmpresa,
+      slugEmpresa: store.checkoutData.slugEmpresa,
+      metodoPago: store.checkoutData.metodoPago,
+      referenciaPago: refPago
     });
 
-    window.showToast(`🎉 ¡Felicitaciones! Has adquirido ${sys.titulo} para "${data.nombreEmpresa}".`, 'success');
+    window.showToast(`🎉 ¡Pago aprobado! Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito.`, 'success');
     store.setCurrentView('library');
   } catch (err) {
-    window.showToast(err.message, 'error');
+    window.showToast(`Error al procesar la compra: ${err.message}`, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i> Confirmar Pago y Activar Sistema';
+    }
   }
 };
