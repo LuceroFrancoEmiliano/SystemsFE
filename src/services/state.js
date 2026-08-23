@@ -24,9 +24,9 @@ class Store {
     this.currentView = 'catalog'; // 'catalog' | 'tienda' | 'manuales' | 'contacto' | 'perfil' | 'library' | 'admin' | 'simulator' | 'checkout' | 'login'
     this.isProfileMenuOpen = false;
     
-    // Cargar del storage
-    const storedSystems = localStorage.getItem('systems_catalog_v2');
-    const storedLicenses = localStorage.getItem('systems_licenses_v2');
+    // Cargar del storage limpio
+    const storedSystems = localStorage.getItem('systems_catalog_v5');
+    const storedLicenses = localStorage.getItem('systems_licenses_v5');
 
     this.sistemas = storedSystems ? JSON.parse(storedSystems) : [];
     this.licencias = storedLicenses ? JSON.parse(storedLicenses) : [];
@@ -65,8 +65,8 @@ class Store {
     } else {
       localStorage.removeItem('systems_current_user');
     }
-    localStorage.setItem('systems_catalog_v2', JSON.stringify(this.sistemas));
-    localStorage.setItem('systems_licenses_v2', JSON.stringify(this.licencias));
+    localStorage.setItem('systems_catalog_v5', JSON.stringify(this.sistemas));
+    localStorage.setItem('systems_licenses_v5', JSON.stringify(this.licencias));
   }
 
   subscribe(listener) {
