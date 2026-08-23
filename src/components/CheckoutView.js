@@ -227,6 +227,22 @@ export function renderCheckoutView() {
 
               </div>
 
+              ${data.metodoPago === 'TRANSFERENCIA' ? `
+                <!-- DATOS DE TRANSFERENCIA BANCARIA DE FRANCO -->
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 2rem;">
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+                    <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
+                    <strong style="font-size: 0.95rem; color: #166534;">Datos para Transferir el Pago:</strong>
+                  </div>
+                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.35rem;">
+                    <div><strong>Titular:</strong> Franco Emiliano Lucero (Systems)</div>
+                    <div><strong>Alias:</strong> <code style="background: #dcfce7; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 800;">franco.systems.mp</code></div>
+                    <div><strong>CVU / CBU:</strong> <code style="background: #dcfce7; padding: 0.15rem 0.4rem; border-radius: 4px; font-family: monospace;">0000003100085492019482</code></div>
+                    <div><strong>Entidad:</strong> Mercado Pago / Banco</div>
+                  </div>
+                </div>
+              ` : ''}
+
               <!-- Botones de Navegación -->
               <div style="display: flex; justify-content: space-between; align-items: center;">
                 <button type="button" class="btn btn-secondary" onclick="store.setCheckoutStep(1)">
