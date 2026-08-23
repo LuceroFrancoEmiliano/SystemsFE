@@ -21,6 +21,7 @@ CREATE TABLE usuarios (
     id_usuario BIGSERIAL PRIMARY KEY,
     email VARCHAR(255) NOT NULL UNIQUE,
     nombre VARCHAR(150) NOT NULL,
+    telefono VARCHAR(50) DEFAULT '',
     avatar_url TEXT DEFAULT '',
     google_id VARCHAR(255) UNIQUE,
     password_hash TEXT, -- Opcional para login con contraseña si no usa Google
