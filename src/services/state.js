@@ -123,6 +123,41 @@ class Store {
     }
   }
 
+  async register({ nombre, email, password, telefono }) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          email: cleanEmail,
+          password,
+          telefono: telefono ? telefono.trim() : ''
+        })
+      });
+
+      const data = await res.json();
+      if (!data.ok) {
+        throw new Error(data.error || 'No se pudo crear la cuenta');
+      }
+
+      this.currentUser = {
+        ...data.usuario,
+        telefono: telefono || ''
+      };
+      this.isAuthenticated = true;
+      this.currentView = 'catalog';
+      this.notifyServerView('catalog');
+      this.save();
+      this.notify();
+      return { ok: true, usuario: this.currentUser };
+    } catch (err) {
+      throw new Error(err.message || 'Error al conectar con el servidor para registrar');
+    }
+  }
+
   logout() {
     fetch('http://localhost:3000/api/auth/logout', {
       method: 'POST',
