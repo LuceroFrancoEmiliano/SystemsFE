@@ -475,6 +475,22 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
     let paymentId = 'MP-DIRECT-' + Date.now().toString().slice(-6);
 
     if (tokenRes && tokenRes.id) {
+      // Determinar payment_method_id exacto según el BIN
+      let paymentMethodId = 'debmaster';
+      if (cleanNumber.startsWith('4')) paymentMethodId = 'debvisa';
+      else if (cleanNumber.startsWith('5')) paymentMethodId = 'debmaster';
+      else if (cleanNumber.startsWith('34') || cleanNumber.startsWith('37')) paymentMethodId = 'amex';
+      else if (cleanNumber.startsWith('58') || cleanNumber.startsWith('60')) paymentMethodId = 'debcabal';
+      else if (cleanNumber.startsWith('27') || cleanNumber.startsWith('22')) paymentMethodId = 'master';
+
+      try {
+        const binRes = await fetch(`https://api.mercadopago.com/v1/payment_methods/search?public_key=${process.env.MP_PUBLIC_KEY || 'APP_USR-92bc25e4-07bc-45a4-a93a-5438ce2e0235'}&bin=${cleanNumber.substring(0, 6)}`);
+        const binData = await binRes.json();
+        if (binData.results && binData.results.length > 0 && binData.results[0].id) {
+          paymentMethodId = binData.results[0].id;
+        }
+      } catch (e) {}
+
       // Cobrar debitando dinero real a través de Payment API de Mercado Pago
       try {
         const paymentApi = new Payment(client);
@@ -484,7 +500,7 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
             token: tokenRes.id,
             description: `Licencia Software - ${sistema.titulo} (${nombre_empresa})`,
             installments: parseInt(installments, 10) || 1,
-            payment_method_id: tokenRes.payment_method?.id || (cleanNumber.startsWith('4') ? 'visa' : 'master'),
+            payment_method_id: paymentMethodId,
             payer: {
               email: usuario.email,
               identification: {
