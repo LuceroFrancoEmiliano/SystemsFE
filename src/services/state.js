@@ -367,8 +367,12 @@ class Store {
         })
       });
       const data = await res.json();
-      if (data.ok && data.id_licencia) {
-        createdId = data.id_licencia;
+      if (data.ok) {
+        if (data.licencia && data.licencia.id_licencia) {
+          createdId = Number(data.licencia.id_licencia);
+        } else if (data.id_licencia) {
+          createdId = Number(data.id_licencia);
+        }
       }
     } catch (e) {}
 

@@ -558,28 +558,34 @@ window.confirmFinalPurchase = async () => {
   const btn = document.getElementById('btn-confirm-pay');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'Procesando débito con Mercado Pago...';
+    btn.innerHTML = 'Conectando con Mercado Pago...';
   }
 
   const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
-  const refPago = `Tarjeta **** ${cardData.number.slice(-4) || '9010'}`;
+  const metodo = store.checkoutData.metodoPago;
 
-  try {
-    const lic = await store.buySystem({
-      sistemaId: sys.id_sistema,
-      nombreEmpresa: store.checkoutData.nombreEmpresa,
-      slugEmpresa: store.checkoutData.slugEmpresa,
-      metodoPago: 'MERCADO_PAGO',
-      referenciaPago: refPago
-    });
+  if (metodo === 'MERCADO_PAGO' || metodo === 'MP_CHECKOUT') {
+    // Abrir la pasarela oficial de Mercado Pago para procesar y cobrar el dinero real
+    await window.handleMercadoPagoRedirect(sys.id_sistema);
+  } else {
+    // Modo Demo / Prueba instantánea sin cobrar
+    try {
+      const lic = await store.buySystem({
+        sistemaId: sys.id_sistema,
+        nombreEmpresa: store.checkoutData.nombreEmpresa,
+        slugEmpresa: store.checkoutData.slugEmpresa,
+        metodoPago: 'TEST',
+        referenciaPago: 'DEMO-TEST'
+      });
 
-    window.showToast(`🎉 ¡Pago aprobado y debitado! Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito.`, 'success');
-    store.setCurrentView('library');
-  } catch (err) {
-    window.showToast(`Error al procesar la compra: ${err.message}`, 'error');
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="credit-card" style="width: 18px; height: 18px;"></i> Cobrar y Activar Sistema Ahora';
+      window.showToast(`🎉 ¡Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito!`, 'success');
+      store.setCurrentView('library');
+    } catch (err) {
+      window.showToast(`Error: ${err.message}`, 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="credit-card" style="width: 18px; height: 18px;"></i> Cobrar y Activar Sistema Ahora';
+      }
     }
   }
 };
