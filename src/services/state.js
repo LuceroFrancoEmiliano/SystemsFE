@@ -373,6 +373,8 @@ class Store {
       }
     } catch (e) {}
 
+    const estadoInicial = metodoPago === 'TRANSFERENCIA' ? 'PENDIENTE_APROBACION' : 'ACTIVA';
+
     const newLicencia = {
       id_licencia: createdId,
       id_usuario: this.currentUser.id_usuario,
@@ -380,16 +382,55 @@ class Store {
       nombre_empresa: nombreEmpresa,
       slug_empresa: slugEmpresa,
       rol_en_sistema: 'ADMIN_PROPIETARIO',
-      estado: 'ACTIVA',
+      estado: estadoInicial,
       fecha_compra: new Date().toISOString(),
       ultimo_acceso: new Date().toISOString(),
-      en_uso: true
+      en_uso: estadoInicial === 'ACTIVA'
     };
 
     this.licencias.unshift(newLicencia);
     this.save();
     this.notify();
     return newLicencia;
+  }
+
+  async approveLicense(id_licencia) {
+    try {
+      const res = await fetch(`http://localhost:3000/api/admin/licencias/${id_licencia}/aprobar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_id: this.currentUser?.id_usuario || 1 })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const lic = this.licencias.find(l => l.id_licencia === Number(id_licencia));
+        if (lic) lic.estado = 'ACTIVA';
+        await this.fetchBuyersListFromBackend();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
+  async rejectLicense(id_licencia, motivo) {
+    try {
+      const res = await fetch(`http://localhost:3000/api/admin/licencias/${id_licencia}/rechazar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          admin_id: this.currentUser?.id_usuario || 1,
+          motivo: motivo || 'Comprobante no válido o monto insuficiente'
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const lic = this.licencias.find(l => l.id_licencia === Number(id_licencia));
+        if (lic) lic.estado = 'RECHAZADA';
+        await this.fetchBuyersListFromBackend();
+        return true;
+      }
+    } catch (e) {}
+    return false;
   }
 
   generateSSOTicket(licenciaId) {

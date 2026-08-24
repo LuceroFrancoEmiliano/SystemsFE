@@ -253,6 +253,27 @@ app.get('/api/admin/compradores/:admin_id', async (req, res) => {
   res.json(result);
 });
 
+// Aprobar pago y activar licencia manualmente
+app.post('/api/admin/licencias/:id_licencia/aprobar', async (req, res) => {
+  const { admin_id } = req.body;
+  const result = await callPackage('pkg_admin.aprobar_licencia', [
+    admin_id || 1,
+    req.params.id_licencia
+  ]);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+// Rechazar pago y suspender licencia
+app.post('/api/admin/licencias/:id_licencia/rechazar', async (req, res) => {
+  const { admin_id, motivo } = req.body;
+  const result = await callPackage('pkg_admin.rechazar_licencia', [
+    admin_id || 1,
+    req.params.id_licencia,
+    motivo || 'Comprobante no válido o monto insuficiente'
+  ]);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
 // ----------------------------------------------------------------------------
 // 8. CONFIGURACIÓN DE COBROS Y PAGOS (ALIAS, CVU, TITULAR)
 // ----------------------------------------------------------------------------

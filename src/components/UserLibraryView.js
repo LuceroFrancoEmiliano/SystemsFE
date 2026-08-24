@@ -44,26 +44,48 @@ export function renderUserLibraryView() {
           ${misLicencias.map(lic => {
             const sys = store.sistemas.find(s => s.id_sistema === lic.id_sistema) || {};
             const fecha = new Date(lic.fecha_compra).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
+            const isPending = lic.estado === 'PENDIENTE_APROBACION' || lic.estado === 'PENDIENTE';
+            const isRejected = lic.estado === 'RECHAZADA';
 
             return `
               <div class="system-card" style="border-color: var(--border-subtle);">
-                <div style="padding: 1.5rem; background: linear-gradient(135deg, #eff6ff 0%, #f0fdfa 100%); border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
+                <div style="padding: 1.5rem; background: ${isPending ? 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)' : isRejected ? 'linear-gradient(135deg, #fee2e2 0%, #fff5f5 100%)' : 'linear-gradient(135deg, #eff6ff 0%, #f0fdfa 100%)'}; border-bottom: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <div style="width: 40px; height: 40px; border-radius: var(--radius-sm); background: #ffffff; border: 1px solid #bfdbfe; display: flex; align-items: center; justify-content: center; color: var(--primary); box-shadow: var(--shadow-sm);">
                       <i data-lucide="${sys.icono || 'box'}" style="width: 22px; height: 22px;"></i>
                     </div>
                     <div>
                       <h4 style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${sys.titulo || 'Sistema'}</h4>
-                      <span style="font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;">Licencia Activa</span>
+                      <span style="font-size: 0.75rem; color: ${isPending ? '#d97706' : isRejected ? '#dc2626' : 'var(--accent-cyan)'}; font-weight: 600;">
+                        ${isPending ? 'Pago en Verificación' : isRejected ? 'Licencia Rechazada' : 'Licencia Activa'}
+                      </span>
                     </div>
                   </div>
-                  <span class="status-chip active">
-                    <span class="status-dot"></span>
-                    Activa
-                  </span>
+                  ${isPending ? `
+                    <span class="status-chip" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                      <span class="status-dot" style="background: #f59e0b;"></span>
+                      En Revisión
+                    </span>
+                  ` : isRejected ? `
+                    <span class="status-chip" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
+                      <span class="status-dot" style="background: #ef4444;"></span>
+                      Rechazada
+                    </span>
+                  ` : `
+                    <span class="status-chip active">
+                      <span class="status-dot"></span>
+                      Activa
+                    </span>
+                  `}
                 </div>
 
                 <div class="system-card-body">
+                  ${isPending ? `
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); padding: 0.85rem 1rem; margin-bottom: 1rem; font-size: 0.82rem; color: #92400e;">
+                      <strong>⏳ Verificación de Transferencia:</strong> Tu comprobante fue recibido. En cuanto el Administrador compruebe el ingreso del dinero en su cuenta, se habilitará el acceso inmediato.
+                    </div>
+                  ` : ''}
+
                   <div style="background: #f8fafc; padding: 0.9rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle); margin-bottom: 1.25rem;">
                     <div style="margin-bottom: 0.4rem;">
                       <span style="font-size: 0.72rem; color: var(--text-dim); text-transform: uppercase; font-weight: 700; display: block;">Empresa Asignada:</span>
@@ -90,10 +112,22 @@ export function renderUserLibraryView() {
                   </div>
 
                   <div class="system-card-footer">
-                    <button class="btn btn-sso" style="width: 100%;" onclick="window.launchSSO(${lic.id_licencia})">
-                      <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
-                      Acceder a mi Sistema (SSO)
-                    </button>
+                    ${isPending ? `
+                      <button class="btn btn-secondary" style="width: 100%; cursor: not-allowed; opacity: 0.7;" disabled>
+                        <i data-lucide="clock" style="width: 16px; height: 16px;"></i>
+                        Esperando Aprobación de Pago
+                      </button>
+                    ` : isRejected ? `
+                      <button class="btn btn-danger" style="width: 100%; cursor: not-allowed;" disabled>
+                        <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+                        Pago No Acreditado
+                      </button>
+                    ` : `
+                      <button class="btn btn-sso" style="width: 100%;" onclick="window.launchSSO(${lic.id_licencia})">
+                        <i data-lucide="external-link" style="width: 16px; height: 16px;"></i>
+                        Acceder a mi Sistema (SSO)
+                      </button>
+                    `}
                   </div>
                 </div>
               </div>

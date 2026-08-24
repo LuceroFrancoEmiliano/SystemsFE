@@ -58,11 +58,11 @@ export function renderAdminCompradoresView() {
             <thead>
               <tr>
                 <th>Cliente Comprador</th>
-                <th>Sistema</th>
-                <th>Empresa Registrada</th>
+                <th>Sistema & Empresa</th>
+                <th>Comprobante / Pago</th>
                 <th>Fecha Compra</th>
-                <th>Último Acceso</th>
-                <th>Estado de Uso</th>
+                <th>Estado de Licencia</th>
+                <th style="text-align: right;">Acciones</th>
               </tr>
             </thead>
             <tbody>
@@ -74,45 +74,70 @@ export function renderAdminCompradoresView() {
                 </tr>
               ` : buyers.map(b => {
                 const fechaCompra = new Date(b.fecha_compra).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
-                const fechaAcceso = b.ultimo_acceso ? new Date(b.ultimo_acceso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'Nunca';
+                const isPending = b.estado_licencia === 'PENDIENTE_APROBACION' || b.estado_licencia === 'PENDIENTE';
+                const isRejected = b.estado_licencia === 'RECHAZADA';
 
                 return `
-                  <tr>
+                  <tr style="${isPending ? 'background: #fffbeb;' : ''}">
                     <td>
                       <div class="buyer-user-cell">
                         <img src="${b.cliente_avatar}" alt="${b.cliente_nombre}" style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-subtle);" />
                         <div>
                           <strong style="display: block; color: var(--text-main); font-size: 0.88rem;">${b.cliente_nombre}</strong>
                           <span style="font-size: 0.75rem; color: var(--text-dim);">${b.cliente_email}</span>
+                          ${b.cliente_telefono ? `<span style="font-size: 0.72rem; color: var(--accent-cyan); display: block;">📱 ${b.cliente_telefono}</span>` : ''}
                         </div>
                       </div>
                     </td>
                     <td>
-                      <strong style="color: var(--text-main); font-size: 0.88rem;">${b.sistema_titulo}</strong>
+                      <div>
+                        <strong style="color: var(--text-main); font-size: 0.88rem;">${b.sistema_titulo}</strong>
+                        <span style="font-size: 0.78rem; color: var(--text-muted); display: block;">${b.nombre_empresa}</span>
+                        <code style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--accent-cyan);">${b.slug_empresa}.misistema.com</code>
+                      </div>
                     </td>
                     <td>
                       <div>
-                        <strong style="color: var(--text-main); font-size: 0.88rem; display: block;">${b.nombre_empresa}</strong>
-                        <span style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600;">${b.slug_empresa}.misistema.com</span>
+                        <strong style="color: var(--primary); font-size: 0.88rem; display: block;">$${parseFloat(b.monto_pago || 0).toFixed(2)} USD</strong>
+                        <span style="font-size: 0.75rem; color: var(--text-dim);">${b.metodo_pago || 'TRANSFERENCIA'}</span>
+                        ${b.referencia_pago ? `<div style="font-family: var(--font-mono); font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-top: 0.2rem;">${b.referencia_pago}</div>` : ''}
                       </div>
                     </td>
                     <td style="color: var(--text-muted); font-size: 0.83rem;">
                       ${fechaCompra}
                     </td>
-                    <td style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-muted);">
-                      ${fechaAcceso}
-                    </td>
                     <td>
-                      ${b.en_uso ? `
-                        <span class="status-chip active">
-                          <span class="status-dot"></span>
-                          En Uso / Activo
+                      ${isPending ? `
+                        <span class="status-chip" style="background: #fef3c7; color: #92400e; border: 1px solid #fde68a;">
+                          <span class="status-dot" style="background: #f59e0b;"></span>
+                          Pendiente Verificación
+                        </span>
+                      ` : isRejected ? `
+                        <span class="status-chip" style="background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;">
+                          <span class="status-dot" style="background: #ef4444;"></span>
+                          Rechazada
                         </span>
                       ` : `
-                        <span class="status-chip idle">
+                        <span class="status-chip active">
                           <span class="status-dot"></span>
-                          Sin Actividad
+                          Activa / Aprobada
                         </span>
+                      `}
+                    </td>
+                    <td style="text-align: right;">
+                      ${isPending ? `
+                        <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
+                          <button class="btn btn-success btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" onclick="window.handleApproveBuyer(${b.id_licencia})">
+                            <i data-lucide="check" style="width: 12px; height: 12px;"></i>
+                            Aprobar Pago
+                          </button>
+                          <button class="btn btn-danger btn-sm" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;" onclick="window.handleRejectBuyer(${b.id_licencia})">
+                            <i data-lucide="x" style="width: 12px; height: 12px;"></i>
+                            Rechazar
+                          </button>
+                        </div>
+                      ` : `
+                        <span style="font-size: 0.78rem; color: #16a34a; font-weight: 700;">✓ Verificado</span>
                       `}
                     </td>
                   </tr>
@@ -319,6 +344,27 @@ export function renderAdminCompradoresView() {
 window.setAdminTab = (tab) => {
   adminSubTab = tab;
   store.notify();
+};
+
+window.handleApproveBuyer = async (licenciaId) => {
+  if (!confirm('¿Confirmas que recibiste el dinero completo de esta transferencia en tu cuenta bancaria?')) return;
+  const ok = await store.approveLicense(licenciaId);
+  if (ok) {
+    window.showToast('✅ Licencia aprobada y habilitada para el cliente.', 'success');
+  } else {
+    window.showToast('Error al aprobar licencia', 'error');
+  }
+};
+
+window.handleRejectBuyer = async (licenciaId) => {
+  const motivo = prompt('Ingresa el motivo del rechazo (ej: Monto transferido insuficiente):', 'Monto no coincide con el valor del sistema');
+  if (!motivo) return;
+  const ok = await store.rejectLicense(licenciaId, motivo);
+  if (ok) {
+    window.showToast('🚫 Licencia rechazada.', 'info');
+  } else {
+    window.showToast('Error al rechazar licencia', 'error');
+  }
 };
 
 window.savePrice = async (sistemaId) => {

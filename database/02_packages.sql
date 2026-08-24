@@ -372,63 +372,71 @@ BEGIN
 
     v_monto_final := COALESCE(p_monto, v_sistema.precio);
 
-    -- 4. Crear la Licencia (Tenant / Empresa del Comprador)
-    INSERT INTO licencias (
-        id_usuario,
-        id_sistema,
-        nombre_empresa,
-        slug_empresa,
-        rol_en_sistema,
-        estado,
-        fecha_compra
-    ) VALUES (
-        p_id_usuario,
-        p_id_sistema,
-        TRIM(p_nombre_empresa),
-        v_slug_final,
-        'ADMIN_PROPIETARIO',
-        'ACTIVA',
-        CURRENT_TIMESTAMP
-    )
-    RETURNING id_licencia INTO v_id_licencia;
+    -- Si el pago es por transferencia manual, queda en revisión pendiente del Administrador
+    DECLARE
+        v_estado_lic VARCHAR := CASE WHEN UPPER(COALESCE(p_metodo_pago, '')) = 'TRANSFERENCIA' THEN 'PENDIENTE_APROBACION' ELSE 'ACTIVA' END;
+        v_estado_tx VARCHAR := CASE WHEN UPPER(COALESCE(p_metodo_pago, '')) = 'TRANSFERENCIA' THEN 'PENDIENTE' ELSE 'APROBADO' END;
+    BEGIN
+        -- 4. Crear la Licencia (Tenant / Empresa del Comprador)
+        INSERT INTO licencias (
+            id_usuario,
+            id_sistema,
+            nombre_empresa,
+            slug_empresa,
+            rol_en_sistema,
+            estado,
+            fecha_compra
+        ) VALUES (
+            p_id_usuario,
+            p_id_sistema,
+            TRIM(p_nombre_empresa),
+            v_slug_final,
+            'ADMIN_PROPIETARIO',
+            v_estado_lic,
+            CURRENT_TIMESTAMP
+        )
+        RETURNING id_licencia INTO v_id_licencia;
 
-    -- 5. Registrar la Transacción
-    INSERT INTO transacciones (
-        id_usuario,
-        id_sistema,
-        id_licencia,
-        monto,
-        moneda,
-        metodo_pago,
-        referencia_externa,
-        estado
-    ) VALUES (
-        p_id_usuario,
-        p_id_sistema,
-        v_id_licencia,
-        v_monto_final,
-        v_sistema.moneda,
-        COALESCE(p_metodo_pago, 'MERCADO_PAGO'),
-        COALESCE(p_referencia_pago, 'TX-' || gen_random_uuid()::text),
-        'APROBADO'
-    )
-    RETURNING id_transaccion INTO v_id_transaccion;
+        -- 5. Registrar la Transacción
+        INSERT INTO transacciones (
+            id_usuario,
+            id_sistema,
+            id_licencia,
+            monto,
+            moneda,
+            metodo_pago,
+            referencia_externa,
+            estado
+        ) VALUES (
+            p_id_usuario,
+            p_id_sistema,
+            v_id_licencia,
+            v_monto_final,
+            v_sistema.moneda,
+            COALESCE(p_metodo_pago, 'MERCADO_PAGO'),
+            COALESCE(p_referencia_pago, 'TX-' || gen_random_uuid()::text),
+            v_estado_tx
+        )
+        RETURNING id_transaccion INTO v_id_transaccion;
 
-    RETURN jsonb_build_object(
-        'ok', true,
-        'mensaje', 'Compra procesada exitosamente. Tu sistema está listo.',
-        'licencia', jsonb_build_object(
-            'id_licencia', v_id_licencia,
-            'id_sistema', v_sistema.id_sistema,
-            'sistema_titulo', v_sistema.titulo,
-            'nombre_empresa', TRIM(p_nombre_empresa),
-            'slug_empresa', v_slug_final,
-            'rol_en_sistema', 'ADMIN_PROPIETARIO',
-            'url_base', v_sistema.url_base,
-            'estado', 'ACTIVA'
-        ),
-        'id_transaccion', v_id_transaccion
-    );
+        RETURN jsonb_build_object(
+            'ok', true,
+            'mensaje', CASE WHEN v_estado_lic = 'PENDIENTE_APROBACION' 
+                THEN 'Comprobante recibido. El Administrador verificará el monto antes de habilitar el acceso.' 
+                ELSE 'Compra procesada exitosamente. Tu sistema está listo.' END,
+            'licencia', jsonb_build_object(
+                'id_licencia', v_id_licencia,
+                'id_sistema', v_sistema.id_sistema,
+                'sistema_titulo', v_sistema.titulo,
+                'nombre_empresa', TRIM(p_nombre_empresa),
+                'slug_empresa', v_slug_final,
+                'rol_en_sistema', 'ADMIN_PROPIETARIO',
+                'url_base', v_sistema.url_base,
+                'estado', v_estado_lic
+            ),
+            'id_transaccion', v_id_transaccion
+        );
+    END;
 EXCEPTION WHEN OTHERS THEN
     RETURN jsonb_build_object('ok', false, 'error', SQLERRM);
 END;
@@ -702,6 +710,7 @@ BEGIN
             'id_licencia', l.id_licencia,
             'cliente_nombre', u.nombre,
             'cliente_email', u.email,
+            'cliente_telefono', u.telefono,
             'cliente_avatar', u.avatar_url,
             'sistema_titulo', s.titulo,
             'sistema_codigo', s.codigo,
@@ -709,6 +718,10 @@ BEGIN
             'slug_empresa', l.slug_empresa,
             'estado_licencia', l.estado,
             'fecha_compra', l.fecha_compra,
+            'metodo_pago', (SELECT tx.metodo_pago FROM transacciones tx WHERE tx.id_licencia = l.id_licencia ORDER BY tx.creado_en DESC LIMIT 1),
+            'referencia_pago', (SELECT tx.referencia_externa FROM transacciones tx WHERE tx.id_licencia = l.id_licencia ORDER BY tx.creado_en DESC LIMIT 1),
+            'monto_pago', (SELECT tx.monto FROM transacciones tx WHERE tx.id_licencia = l.id_licencia ORDER BY tx.creado_en DESC LIMIT 1),
+            'estado_pago', (SELECT tx.estado FROM transacciones tx WHERE tx.id_licencia = l.id_licencia ORDER BY tx.creado_en DESC LIMIT 1),
             'ultimo_acceso', (
                 SELECT MAX(t.creado_en) 
                 FROM sso_tickets t 
@@ -730,6 +743,55 @@ BEGIN
         'ok', true,
         'compradores', v_result
     );
+END;
+$$;
+
+-- 3. Aprobar Licencia Manual (Pago por Transferencia Verificado)
+CREATE OR REPLACE FUNCTION pkg_admin.aprobar_licencia(
+    p_admin_id BIGINT,
+    p_id_licencia BIGINT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_admin usuarios%ROWTYPE;
+BEGIN
+    SELECT * INTO v_admin FROM usuarios WHERE id_usuario = p_admin_id AND rol_global = 'ADMIN';
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Acceso denegado: Se requieren permisos de SuperAdmin');
+    END IF;
+
+    UPDATE licencias SET estado = 'ACTIVA' WHERE id_licencia = p_id_licencia;
+    UPDATE transacciones SET estado = 'APROBADO' WHERE id_licencia = p_id_licencia;
+
+    RETURN jsonb_build_object('ok', true, 'mensaje', 'Licencia aprobada y habilitada con éxito');
+END;
+$$;
+
+-- 4. Rechazar Licencia (Monto Incorrecto o Transferencia Inválida)
+CREATE OR REPLACE FUNCTION pkg_admin.rechazar_licencia(
+    p_admin_id BIGINT,
+    p_id_licencia BIGINT,
+    p_motivo VARCHAR DEFAULT 'Monto o comprobante no válido'
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_admin usuarios%ROWTYPE;
+BEGIN
+    SELECT * INTO v_admin FROM usuarios WHERE id_usuario = p_admin_id AND rol_global = 'ADMIN';
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('ok', false, 'error', 'Acceso denegado: Se requieren permisos de SuperAdmin');
+    END IF;
+
+    UPDATE licencias SET estado = 'RECHAZADA' WHERE id_licencia = p_id_licencia;
+    UPDATE transacciones SET estado = 'RECHAZADO' WHERE id_licencia = p_id_licencia;
+
+    RETURN jsonb_build_object('ok', true, 'mensaje', 'Licencia rechazada');
 END;
 $$;
 
