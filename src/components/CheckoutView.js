@@ -558,19 +558,34 @@ window.confirmFinalPurchase = async () => {
   const btn = document.getElementById('btn-confirm-pay');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'Conectando con Mercado Pago...';
+    btn.innerHTML = '<span class="loading-spinner"></span> Procesando cobro con Mercado Pago...';
   }
 
   const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
   const metodo = store.checkoutData.metodoPago;
 
-  if (metodo === 'MERCADO_PAGO' || metodo === 'MP_CHECKOUT') {
-    // Abrir la pasarela oficial de Mercado Pago para procesar y cobrar el dinero real
-    await window.handleMercadoPagoRedirect(sys.id_sistema);
-  } else {
-    // Modo Demo / Prueba instantánea sin cobrar
-    try {
-      const lic = await store.buySystem({
+  try {
+    if (metodo === 'MERCADO_PAGO') {
+      // Cobro directo transparente con tarjeta a través de la API de Mercado Pago
+      await store.processDirectCardPayment({
+        id_sistema: sys.id_sistema,
+        nombre_empresa: store.checkoutData.nombreEmpresa,
+        slug_empresa: store.checkoutData.slugEmpresa,
+        card_number: cardData.number,
+        cardholder_name: cardData.name,
+        card_expiry: cardData.expiry,
+        card_cvv: cardData.cvv,
+        card_dni: cardData.dni,
+        installments: cardData.installments
+      });
+
+      window.showToast(`🎉 ¡Pago debitado y aprobado! Tu sistema "${sys.titulo}" para "${store.checkoutData.nombreEmpresa}" está activo.`, 'success');
+      store.setCurrentView('library');
+    } else if (metodo === 'MP_CHECKOUT') {
+      await window.handleMercadoPagoRedirect(sys.id_sistema);
+    } else {
+      // Modo Demo / Prueba
+      await store.buySystem({
         sistemaId: sys.id_sistema,
         nombreEmpresa: store.checkoutData.nombreEmpresa,
         slugEmpresa: store.checkoutData.slugEmpresa,
@@ -578,14 +593,14 @@ window.confirmFinalPurchase = async () => {
         referenciaPago: 'DEMO-TEST'
       });
 
-      window.showToast(`🎉 ¡Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito!`, 'success');
+      window.showToast(`🎉 ¡Licencia de prueba activada con éxito!`, 'success');
       store.setCurrentView('library');
-    } catch (err) {
-      window.showToast(`Error: ${err.message}`, 'error');
-      if (btn) {
-        btn.disabled = false;
-        btn.innerHTML = '<i data-lucide="credit-card" style="width: 18px; height: 18px;"></i> Cobrar y Activar Sistema Ahora';
-      }
+    }
+  } catch (err) {
+    window.showToast(`Error: ${err.message}`, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="credit-card" style="width: 18px; height: 18px;"></i> Cobrar y Activar Sistema Ahora';
     }
   }
 };

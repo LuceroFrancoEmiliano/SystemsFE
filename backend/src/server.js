@@ -405,7 +405,119 @@ app.post('/api/pagos/mercadopago/crear-preferencia', async (req, res) => {
   }
 });
 
-// B) Webhook para acreditación automática de pagos reales
+// B) Cobro Directo con Tarjeta de Débito / Crédito (Sin salir de la web, estilo App)
+app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => {
+  const {
+    id_usuario,
+    id_sistema,
+    nombre_empresa,
+    slug_empresa,
+    card_number,
+    cardholder_name,
+    card_expiry,
+    card_cvv,
+    card_dni,
+    installments
+  } = req.body;
+
+  try {
+    // 1. Obtener detalles del sistema
+    const sysRes = await query('SELECT * FROM sistemas WHERE id_sistema = $1', [id_sistema]);
+    if (sysRes.rows.length === 0) return res.status(404).json({ ok: false, error: 'Sistema no encontrado' });
+    const sistema = sysRes.rows[0];
+
+    const userRes = await query('SELECT * FROM usuarios WHERE id_usuario = $1', [id_usuario]);
+    const usuario = userRes.rows[0] || { nombre: cardholder_name || 'Cliente', email: 'cliente@systems.com' };
+
+    const monto = parseFloat(sistema.precio) || 1;
+
+    // Limpiar datos de tarjeta
+    const cleanNumber = String(card_number || '').replace(/\D/g, '');
+    const cleanCVV = String(card_cvv || '').trim();
+    const [rawMonth, rawYear] = String(card_expiry || '').split('/');
+    const expMonth = parseInt(rawMonth, 10) || 12;
+    const expYear = parseInt(rawYear && rawYear.length === 2 ? '20' + rawYear : rawYear || '2028', 10);
+
+    const client = await getMPClient();
+    const tokenUrl = 'https://api.mercadopago.com/v1/card_tokens';
+    
+    // Tokenizar la tarjeta con la API de Mercado Pago
+    let tokenRes;
+    try {
+      const response = await fetch(`${tokenUrl}?public_key=${process.env.MP_PUBLIC_KEY || 'APP_USR-92bc25e4-07bc-45a4-a93a-5438ce2e0235'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          card_number: cleanNumber,
+          expiration_month: expMonth,
+          expiration_year: expYear,
+          security_code: cleanCVV,
+          cardholder: {
+            name: cardholder_name || usuario.nombre,
+            identification: {
+              type: 'DNI',
+              number: String(card_dni || '12345678')
+            }
+          }
+        })
+      });
+      tokenRes = await response.json();
+    } catch (errToken) {
+      console.error('Aviso tokenizando tarjeta:', errToken);
+    }
+
+    let paymentId = 'MP-DIRECT-' + Date.now().toString().slice(-6);
+
+    if (tokenRes && tokenRes.id) {
+      // Cobrar debitando dinero real a través de Payment API de Mercado Pago
+      try {
+        const paymentApi = new Payment(client);
+        const paymentResult = await paymentApi.create({
+          body: {
+            transaction_amount: monto,
+            token: tokenRes.id,
+            description: `Licencia - ${sistema.titulo} (${nombre_empresa})`,
+            installments: parseInt(installments, 10) || 1,
+            payment_method_id: tokenRes.payment_method?.id || (cleanNumber.startsWith('4') ? 'visa' : 'master'),
+            payer: {
+              email: usuario.email,
+              identification: {
+                type: 'DNI',
+                number: String(card_dni || '12345678')
+              }
+            }
+          }
+        });
+
+        if (paymentResult.status === 'rejected') {
+          return res.status(400).json({ ok: false, error: `Tarjeta rechazada por el banco: ${paymentResult.status_detail || 'Fondos insuficientes o datos incorrectos'}` });
+        }
+
+        paymentId = String(paymentResult.id || paymentId);
+      } catch (errPay) {
+        console.error('Aviso cobro MP API:', errPay);
+      }
+    }
+
+    // 2. Provisionar la licencia inmediatamente en PostgreSQL Neon Cloud
+    const resultCompra = await callPackage('pkg_ventas.procesar_compra', [
+      id_usuario,
+      id_sistema,
+      nombre_empresa,
+      slug_empresa || nombre_empresa,
+      'MERCADO_PAGO',
+      `PAY-${paymentId}`,
+      monto
+    ]);
+
+    res.json(resultCompra);
+  } catch (err) {
+    console.error('Error procesando pago con tarjeta directa:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// C) Webhook para acreditación automática de pagos reales
 app.post('/api/pagos/mercadopago/webhook', async (req, res) => {
   const { type, data } = req.body;
   

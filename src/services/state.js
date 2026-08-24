@@ -341,6 +341,45 @@ class Store {
     return sys;
   }
 
+  async processDirectCardPayment(cardPayload) {
+    if (!this.isAuthenticated || !this.currentUser) {
+      throw new Error('Debes estar autenticado para comprar');
+    }
+
+    const res = await fetch('http://localhost:3000/api/pagos/mercadopago/procesar-tarjeta-directa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: this.currentUser.id_usuario,
+        ...cardPayload
+      })
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      throw new Error(data.error || 'No se pudo procesar el pago con la tarjeta');
+    }
+
+    const licData = data.licencia || {};
+    const newLicencia = {
+      id_licencia: Number(licData.id_licencia || Date.now()),
+      id_usuario: this.currentUser.id_usuario,
+      id_sistema: Number(cardPayload.id_sistema),
+      nombre_empresa: cardPayload.nombre_empresa,
+      slug_empresa: cardPayload.slug_empresa,
+      rol_en_sistema: 'ADMIN_PROPIETARIO',
+      estado: 'ACTIVA',
+      fecha_compra: new Date().toISOString(),
+      ultimo_acceso: new Date().toISOString(),
+      en_uso: true
+    };
+
+    this.licencias.unshift(newLicencia);
+    this.save();
+    this.notify();
+    return newLicencia;
+  }
+
   async buySystem({ sistemaId, nombreEmpresa, slugEmpresa, metodoPago, referenciaPago }) {
     if (!this.isAuthenticated || !this.currentUser) {
       throw new Error('Debes estar autenticado para comprar');
