@@ -521,7 +521,8 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
         paymentId = String(paymentResult.id || paymentId);
         console.log(`🎉 Cobro exitoso con Mercado Pago Payment API: $${transactionAmount} ARS - ID: ${paymentId}`);
       } catch (errPay) {
-        console.error('Aviso cobro MP API:', errPay);
+        console.error('❌ Error detallado del banco en Mercado Pago:', errPay);
+        return res.status(400).json({ ok: false, error: errPay.message || 'El banco rechazó la tarjeta. Por favor verifica si tiene compras por internet habilitadas o usa Mercado Pago Checkout.' });
       }
     }
 
