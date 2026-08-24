@@ -16,9 +16,6 @@ export function renderAdminCompradoresView() {
     `;
   }
 
-  // Refrescar en segundo plano desde Neon DB
-  store.fetchBuyersListFromBackend();
-
   const buyers = store.getBuyersList();
   const sistemas = store.sistemas;
 

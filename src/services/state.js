@@ -272,6 +272,10 @@ class Store {
     this.isProfileMenuOpen = false;
     this.notifyServerView(view);
     this.notify();
+
+    if (view === 'admin' && this.currentUser?.rol_global === 'ADMIN') {
+      this.fetchBuyersListFromBackend();
+    }
   }
 
   toggleProfileMenu(force) {
