@@ -139,3 +139,28 @@ store.subscribe(() => {
 
 // Inicializar la aplicación
 renderApp();
+
+// Verificar retorno exitoso de Mercado Pago Checkout Pro
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('mp_status') === 'approved') {
+  const sysId = urlParams.get('id_sistema');
+  const empresa = urlParams.get('empresa') || 'Mi Empresa';
+  const slug = urlParams.get('slug') || '';
+  
+  if (sysId) {
+    store.buySystem({
+      sistemaId: Number(sysId),
+      nombreEmpresa: decodeURIComponent(empresa),
+      slugEmpresa: decodeURIComponent(slug),
+      metodoPago: 'MERCADO_PAGO',
+      referenciaPago: `MP-CHECKOUT-PRO-${Date.now().toString().slice(-6)}`
+    }).then(() => {
+      window.showToast(`🎉 ¡Pago aprobado y debitado en Mercado Pago! Licencia activada con éxito.`, 'success');
+      store.setCurrentView('library');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }).catch(() => {
+      store.setCurrentView('library');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    });
+  }
+}
