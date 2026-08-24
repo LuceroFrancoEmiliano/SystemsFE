@@ -5,6 +5,7 @@ export default defineConfig({
     port: 5173,
     open: false,
     cors: true,
+    allowedHosts: true
   },
   build: {
     target: 'esnext',
