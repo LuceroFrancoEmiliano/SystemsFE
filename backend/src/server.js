@@ -514,7 +514,7 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
       slug_empresa || nombre_empresa,
       'MERCADO_PAGO',
       `PAY-${paymentId}`,
-      monto
+      rawPrecio
     ]);
 
     res.json(resultCompra);
