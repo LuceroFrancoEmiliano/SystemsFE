@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { callPackage } from './db.js';
+import { MercadoPagoConfig, Preference, Payment } from 'mercadopago';
+import { callPackage, query } from './db.js';
 
 dotenv.config();
 
@@ -274,8 +275,24 @@ app.post('/api/admin/licencias/:id_licencia/rechazar', async (req, res) => {
   res.status(result.ok ? 200 : 400).json(result);
 });
 
+// Helper para obtener cliente de Mercado Pago configurado
+async function getMPClient() {
+  let token = process.env.MP_ACCESS_TOKEN;
+  try {
+    const res = await query('SELECT mp_access_token FROM configuracion_pagos ORDER BY id_config ASC LIMIT 1');
+    if (res.rows.length > 0 && res.rows[0].mp_access_token) {
+      token = res.rows[0].mp_access_token;
+    }
+  } catch (e) {}
+
+  return new MercadoPagoConfig({
+    accessToken: token || 'TEST-0000000000000000-000000-00000000000000000000000000000000-000000000',
+    options: { timeout: 5000 }
+  });
+}
+
 // ----------------------------------------------------------------------------
-// 8. CONFIGURACIÓN DE COBROS Y PAGOS (ALIAS, CVU, TITULAR)
+// 8. CONFIGURACIÓN DE MERCADO PAGO (API KEYS)
 // ----------------------------------------------------------------------------
 app.get('/api/config/pagos', async (req, res) => {
   try {
@@ -286,10 +303,9 @@ app.get('/api/config/pagos', async (req, res) => {
       res.json({
         ok: true,
         config: {
-          alias_transferencia: 'emiliaponceg.mp',
-          cvu_transferencia: '0000003100085492019482',
-          titular: 'Emilia Ponce',
-          banco: 'Mercado Pago'
+          mp_access_token: process.env.MP_ACCESS_TOKEN || '',
+          mp_public_key: process.env.MP_PUBLIC_KEY || '',
+          mp_sandbox: true
         }
       });
     }
@@ -299,29 +315,128 @@ app.get('/api/config/pagos', async (req, res) => {
 });
 
 app.put('/api/admin/config/pagos', async (req, res) => {
-  const { alias_transferencia, cvu_transferencia, titular, banco } = req.body;
+  const { mp_access_token, mp_public_key, mp_sandbox } = req.body;
   try {
     const result = await query(`
-      INSERT INTO configuracion_pagos (id_config, alias_transferencia, cvu_transferencia, titular, banco, actualizado_en)
-      VALUES (1, $1, $2, $3, $4, CURRENT_TIMESTAMP)
+      INSERT INTO configuracion_pagos (id_config, mp_access_token, mp_public_key, mp_sandbox, actualizado_en)
+      VALUES (1, $1, $2, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (id_config) DO UPDATE SET
-        alias_transferencia = EXCLUDED.alias_transferencia,
-        cvu_transferencia = EXCLUDED.cvu_transferencia,
-        titular = EXCLUDED.titular,
-        banco = EXCLUDED.banco,
+        mp_access_token = EXCLUDED.mp_access_token,
+        mp_public_key = EXCLUDED.mp_public_key,
+        mp_sandbox = EXCLUDED.mp_sandbox,
         actualizado_en = CURRENT_TIMESTAMP
       RETURNING *;
     `, [
-      alias_transferencia || 'emiliaponceg.mp',
-      cvu_transferencia || '',
-      titular || '',
-      banco || 'Mercado Pago'
+      mp_access_token || '',
+      mp_public_key || '',
+      mp_sandbox !== undefined ? mp_sandbox : true
     ]);
 
-    res.json({ ok: true, mensaje: 'Datos de cobro actualizados con éxito', config: result.rows[0] });
+    res.json({ ok: true, mensaje: 'Credenciales de Mercado Pago guardadas con éxito', config: result.rows[0] });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
+});
+
+// ----------------------------------------------------------------------------
+// 9. COBROS REALES CON MERCADO PAGO (CHECKOUT PRO & TARJETA DIRECTA)
+// ----------------------------------------------------------------------------
+
+// A) Crear Preferencia de Pago Oficial (Checkout Pro / Link de Pago / Saldo en Cuenta)
+app.post('/api/pagos/mercadopago/crear-preferencia', async (req, res) => {
+  const { id_usuario, id_sistema, nombre_empresa, slug_empresa } = req.body;
+
+  try {
+    // 1. Obtener detalles del sistema y usuario
+    const sysRes = await query('SELECT * FROM sistemas WHERE id_sistema = $1', [id_sistema]);
+    if (sysRes.rows.length === 0) return res.status(404).json({ ok: false, error: 'Sistema no encontrado' });
+    const sistema = sysRes.rows[0];
+
+    const userRes = await query('SELECT * FROM usuarios WHERE id_usuario = $1', [id_usuario]);
+    const usuario = userRes.rows[0] || { nombre: 'Cliente', email: 'cliente@systems.com' };
+
+    // 2. Crear cliente MP y preferencia
+    const client = await getMPClient();
+    const preference = new Preference(client);
+
+    const unitPrice = parseFloat(sistema.precio) || 1;
+
+    const prefData = await preference.create({
+      body: {
+        items: [
+          {
+            id: String(sistema.id_sistema),
+            title: `Licencia Software - ${sistema.titulo}`,
+            description: `Instancia privada dedicada para empresa: ${nombre_empresa}`,
+            quantity: 1,
+            unit_price: unitPrice,
+            currency_id: 'ARS'
+          }
+        ],
+        payer: {
+          name: usuario.nombre,
+          email: usuario.email
+        },
+        back_urls: {
+          success: `http://localhost:5173/?mp_status=approved&id_usuario=${id_usuario}&id_sistema=${id_sistema}&empresa=${encodeURIComponent(nombre_empresa)}&slug=${encodeURIComponent(slug_empresa || '')}`,
+          failure: `http://localhost:5173/?mp_status=failure`,
+          pending: `http://localhost:5173/?mp_status=pending`
+        },
+        auto_return: 'approved',
+        notification_url: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/pagos/mercadopago/webhook`,
+        metadata: {
+          id_usuario,
+          id_sistema,
+          nombre_empresa,
+          slug_empresa
+        }
+      }
+    });
+
+    res.json({
+      ok: true,
+      init_point: prefData.init_point,
+      sandbox_init_point: prefData.sandbox_init_point,
+      preference_id: prefData.id
+    });
+  } catch (err) {
+    console.error('Error al crear preferencia MP:', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// B) Webhook para acreditación automática de pagos reales
+app.post('/api/pagos/mercadopago/webhook', async (req, res) => {
+  const { type, data } = req.body;
+  
+  if (type === 'payment' && data?.id) {
+    try {
+      const client = await getMPClient();
+      const paymentApi = new Payment(client);
+      const paymentInfo = await paymentApi.get({ id: data.id });
+
+      if (paymentInfo.status === 'approved') {
+        const metadata = paymentInfo.metadata || {};
+        if (metadata.id_usuario && metadata.id_sistema && metadata.nombre_empresa) {
+          // Provisionar licencia inmediatamente
+          await callPackage('pkg_ventas.procesar_compra', [
+            metadata.id_usuario,
+            metadata.id_sistema,
+            metadata.nombre_empresa,
+            metadata.slug_empresa || metadata.nombre_empresa,
+            'MERCADO_PAGO',
+            `MP-PAY-${paymentInfo.id}`,
+            paymentInfo.transaction_amount
+          ]);
+          console.log(`✅ Pago real de Mercado Pago ${paymentInfo.id} aprobado y acreditado para ${metadata.nombre_empresa}`);
+        }
+      }
+    } catch (e) {
+      console.error('Error procesando webhook MP:', e);
+    }
+  }
+
+  res.sendStatus(200);
 });
 
 // ----------------------------------------------------------------------------

@@ -42,7 +42,7 @@ export function renderAdminCompradoresView() {
           </button>
           <button class="btn btn-sm ${adminSubTab === 'pagos' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('pagos')">
             <i data-lucide="wallet" style="width: 14px; height: 14px;"></i>
-            Datos de Cobro (CBU/Alias)
+            Conexión Mercado Pago
           </button>
           <button class="btn btn-sm ${adminSubTab === 'nuevo-sistema' ? 'btn-primary' : 'btn-secondary'}" onclick="window.setAdminTab('nuevo-sistema')">
             <i data-lucide="plus-circle" style="width: 14px; height: 14px;"></i>
@@ -99,7 +99,7 @@ export function renderAdminCompradoresView() {
                     <td>
                       <div>
                         <strong style="color: var(--primary); font-size: 0.88rem; display: block;">$${parseFloat(b.monto_pago || 0).toFixed(2)} USD</strong>
-                        <span style="font-size: 0.75rem; color: var(--text-dim);">${b.metodo_pago || 'TRANSFERENCIA'}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-dim);">${b.metodo_pago || 'MERCADO_PAGO'}</span>
                         ${b.referencia_pago ? `<div style="font-family: var(--font-mono); font-size: 0.72rem; background: #e0f2fe; color: #0369a1; padding: 0.15rem 0.35rem; border-radius: 4px; display: inline-block; margin-top: 0.2rem;">${b.referencia_pago}</div>` : ''}
                       </div>
                     </td>
@@ -209,73 +209,59 @@ export function renderAdminCompradoresView() {
       ` : ''}
 
       ${adminSubTab === 'pagos' ? `
-        <!-- TAB 3: CONFIGURACIÓN DE CUENTAS DE COBRO (CBU/ALIAS) -->
+        <!-- TAB 3: CONFIGURACIÓN DE MERCADO PAGO API -->
         <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: var(--radius-lg); padding: 2rem; max-width: 760px; margin: 0 auto; box-shadow: var(--shadow-md);">
           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-            <div style="width: 42px; height: 42px; border-radius: var(--radius-md); background: #dcfce7; color: #166534; display: flex; align-items: center; justify-content: center;">
-              <i data-lucide="wallet" style="width: 22px; height: 22px;"></i>
+            <div style="width: 42px; height: 42px; border-radius: var(--radius-md); background: #e0f2fe; color: #0369a1; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="credit-card" style="width: 22px; height: 22px;"></i>
             </div>
             <div>
-              <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0;">Datos de Cobro por Transferencia</h3>
-              <span style="font-size: 0.84rem; color: var(--text-muted);">Estos son los datos que verán tus clientes al momento de pagar en el checkout.</span>
+              <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin: 0;">Integración Oficial de Mercado Pago</h3>
+              <span style="font-size: 0.84rem; color: var(--text-muted);">Configura tus credenciales para cobrar dinero real directo a tu cuenta de Mercado Pago.</span>
             </div>
           </div>
 
-          <form onsubmit="window.handleSavePaymentConfig(event)" style="margin-top: 1.5rem;">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-              <div>
-                <label class="form-label">Alias de Mercado Pago / Banco:</label>
-                <input 
-                  type="text" 
-                  id="pay-alias" 
-                  class="form-input" 
-                  style="font-weight: 800; color: #065f46; background: #f0fdf4;" 
-                  value="${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}" 
-                  required 
-                />
-              </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: var(--radius-md); padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.85rem; color: #475569;">
+            <strong>¿Dónde obtener tus credenciales?</strong> Ingresa a <a href="https://www.mercadopago.com/developers/panel/app" target="_blank" style="color: var(--primary); font-weight: 700; text-decoration: underline;">Mercado Pago Developers</a>, crea tu aplicación y copia tu <code>Access Token</code> (de producción o pruebas).
+          </div>
 
-              <div>
-                <label class="form-label">CBU / CVU (22 Dígitos):</label>
-                <input 
-                  type="text" 
-                  id="pay-cvu" 
-                  class="form-input" 
-                  style="font-family: var(--font-mono); font-size: 0.9rem;" 
-                  value="${store.configPagos?.cvu_transferencia || '0000003100085492019482'}" 
-                  required 
-                />
-              </div>
+          <form onsubmit="window.handleSavePaymentConfig(event)" style="margin-top: 1.5rem;">
+            <div style="margin-bottom: 1.25rem;">
+              <label class="form-label">Mercado Pago Access Token:</label>
+              <input 
+                type="password" 
+                id="mp-token" 
+                class="form-input" 
+                style="font-family: var(--font-mono); font-size: 0.88rem;" 
+                placeholder="APP_USR-xxxxxx o TEST-xxxxxx" 
+                value="${store.configPagos?.mp_access_token || ''}" 
+                required 
+              />
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
-              <div>
-                <label class="form-label">Nombre del Titular de la Cuenta:</label>
-                <input 
-                  type="text" 
-                  id="pay-titular" 
-                  class="form-input" 
-                  value="${store.configPagos?.titular || 'Emilia Ponce'}" 
-                  required 
-                />
-              </div>
+            <div style="margin-bottom: 1.25rem;">
+              <label class="form-label">Mercado Pago Public Key (Opcional):</label>
+              <input 
+                type="text" 
+                id="mp-public" 
+                class="form-input" 
+                style="font-family: var(--font-mono); font-size: 0.88rem;" 
+                placeholder="APP_USR-xxxxxx o TEST-xxxxxx" 
+                value="${store.configPagos?.mp_public_key || ''}" 
+              />
+            </div>
 
-              <div>
-                <label class="form-label">Entidad Bancaria o Billetera:</label>
-                <input 
-                  type="text" 
-                  id="pay-banco" 
-                  class="form-input" 
-                  value="${store.configPagos?.banco || 'Mercado Pago'}" 
-                  required 
-                />
-              </div>
+            <div style="margin-bottom: 1.5rem;">
+              <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--text-main);">
+                <input type="checkbox" id="mp-sandbox" ${store.configPagos?.mp_sandbox !== false ? 'checked' : ''} />
+                Modo Sandbox (Tarjetas y Credenciales de Prueba para Testeo)
+              </label>
             </div>
 
             <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
               <button type="submit" class="btn btn-success" style="padding: 0.75rem 1.5rem;">
                 <i data-lucide="check"></i>
-                Guardar Datos de Cobro
+                Guardar Credenciales de Mercado Pago
               </button>
             </div>
           </form>
@@ -382,19 +368,17 @@ window.savePrice = async (sistemaId) => {
 
 window.handleSavePaymentConfig = async (e) => {
   e.preventDefault();
-  const alias = document.getElementById('pay-alias').value.trim();
-  const cvu = document.getElementById('pay-cvu').value.trim();
-  const titular = document.getElementById('pay-titular').value.trim();
-  const banco = document.getElementById('pay-banco').value.trim();
+  const token = document.getElementById('mp-token').value.trim();
+  const publicKey = document.getElementById('mp-public').value.trim();
+  const sandbox = document.getElementById('mp-sandbox').checked;
 
   try {
     await store.updatePaymentConfig({
-      alias_transferencia: alias,
-      cvu_transferencia: cvu,
-      titular,
-      banco
+      mp_access_token: token,
+      mp_public_key: publicKey,
+      mp_sandbox: sandbox
     });
-    window.showToast('✅ Datos de cobro (Alias/CVU) guardados exitosamente en Neon Cloud', 'success');
+    window.showToast('✅ Credenciales de Mercado Pago guardadas con éxito en Neon Cloud', 'success');
   } catch (err) {
     window.showToast(`Error: ${err.message}`, 'error');
   }

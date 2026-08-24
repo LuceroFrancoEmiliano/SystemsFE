@@ -32,12 +32,11 @@ class Store {
     this.licencias = storedLicenses ? JSON.parse(storedLicenses) : [];
     this.buyersList = [];
     
-    // Configuración de cobro (Alias, CVU, Titular)
-    this.configPagos = JSON.parse(localStorage.getItem('systems_config_pagos_v1') || JSON.stringify({
-      alias_transferencia: 'emiliaponceg.mp',
-      cvu_transferencia: '0000003100085492019482',
-      titular: 'Emilia Ponce',
-      banco: 'Mercado Pago'
+    // Configuración de cobro (Mercado Pago API)
+    this.configPagos = JSON.parse(localStorage.getItem('systems_config_pagos_mp_v1') || JSON.stringify({
+      mp_access_token: '',
+      mp_public_key: '',
+      mp_sandbox: true
     }));
 
     this.activeSimulatorSession = null;

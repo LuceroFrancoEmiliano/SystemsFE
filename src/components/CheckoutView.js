@@ -9,11 +9,6 @@ let cardData = {
   installments: '1'
 };
 
-let transferData = {
-  comprobante: '',
-  origen: 'Mercado Pago'
-};
-
 export function renderCheckoutView() {
   const user = store.currentUser;
   if (!user) {
@@ -89,8 +84,8 @@ export function renderCheckoutView() {
               2
             </div>
             <div>
-              <strong style="font-size: 0.88rem; color: ${step >= 2 ? 'var(--text-main)' : 'var(--text-dim)'}; display: block;">Método de Pago & Datos</strong>
-              <span style="font-size: 0.72rem; color: var(--text-dim);">Ingresa tus credenciales</span>
+              <strong style="font-size: 0.88rem; color: ${step >= 2 ? 'var(--text-main)' : 'var(--text-dim)'}; display: block;">Pago Seguro</strong>
+              <span style="font-size: 0.72rem; color: var(--text-dim);">Tarjeta Débito / Crédito</span>
             </div>
           </div>
 
@@ -124,7 +119,7 @@ export function renderCheckoutView() {
                 Configuración de tu Empresa
               </h2>
               <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem;">
-                Ingresa el nombre con el que operarás. Con estos datos se generará automáticamente tu entorno web privado y tu base de datos dedicada.
+                Ingresa el nombre de tu negocio para generar tu entorno privado y tu base de datos dedicada.
               </p>
 
               <form onsubmit="window.handleStep1Submit(event)">
@@ -163,7 +158,7 @@ export function renderCheckoutView() {
 
                 <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                   <button type="submit" class="btn btn-primary" id="btn-step1-next" ${slugCalculado.length < 3 ? 'disabled' : ''}>
-                    Continuar al Método de Pago
+                    Continuar al Pago
                     <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
                   </button>
                 </div>
@@ -172,14 +167,14 @@ export function renderCheckoutView() {
           ` : ''}
 
           ${step === 2 ? `
-            <!-- PASO 2: MÉTODO DE PAGO Y CREDENCIALES DEL COMPRADOR -->
+            <!-- PASO 2: PAGO CON TARJETA DE DÉBITO / CRÉDITO O MERCADO PAGO -->
             <div class="animate-fade-in">
               <span class="badge badge-primary" style="margin-bottom: 0.5rem;">Paso 2 de 3</span>
               <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 0.35rem; color: var(--text-main);">
-                Método de Pago & Credenciales
+                Pago con Tarjeta o Mercado Pago
               </h2>
               <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-                Selecciona tu medio de pago e ingresa tus datos para procesar la transacción.
+                Ingresa los datos de tu tarjeta de débito o crédito para procesar el débito directo a través de la pasarela segura.
               </p>
 
               <!-- CAJA DESTACADA CON EL PRECIO -->
@@ -194,38 +189,38 @@ export function renderCheckoutView() {
                 </div>
               </div>
 
-              <!-- Selector de Métodos de Pago -->
-              <label class="form-label" style="margin-bottom: 0.75rem;">Elige tu Forma de Pago:</label>
+              <!-- Selector de Métodos de Pago (SOLO TARJETA Y MERCADO PAGO) -->
+              <label class="form-label" style="margin-bottom: 0.75rem;">Modalidad de Pago:</label>
               <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem;">
                 
                 <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'MERCADO_PAGO' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'MERCADO_PAGO' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="radio" name="payment_method" value="MERCADO_PAGO" ${data.metodoPago === 'MERCADO_PAGO' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Tarjeta de Débito / Crédito (Mercado Pago)</strong>
-                      <span style="font-size: 0.78rem; color: var(--text-muted);">Procesamiento seguro instantáneo</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Tarjeta de Débito / Crédito Directa</strong>
+                      <span style="font-size: 0.78rem; color: var(--text-muted);">Débito automático en el acto (Visa, Mastercard, Cabal, etc.)</span>
                     </div>
                   </div>
                   <i data-lucide="credit-card" style="width: 20px; height: 20px; color: var(--primary);"></i>
                 </label>
 
-                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TRANSFERENCIA' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TRANSFERENCIA' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
+                <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'MP_CHECKOUT' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'MP_CHECKOUT' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <input type="radio" name="payment_method" value="TRANSFERENCIA" ${data.metodoPago === 'TRANSFERENCIA' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
+                    <input type="radio" name="payment_method" value="MP_CHECKOUT" ${data.metodoPago === 'MP_CHECKOUT' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Transferencia Bancaria Inmediata</strong>
-                      <span style="font-size: 0.78rem; color: var(--text-muted);">Transferencia directa por CVU / Alias</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Pagar con Saldo en Cuenta Mercado Pago</strong>
+                      <span style="font-size: 0.78rem; color: var(--text-muted);">Abre la app de Mercado Pago para pagar con tu dinero disponible</span>
                     </div>
                   </div>
-                  <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
+                  <i data-lucide="smartphone" style="width: 20px; height: 20px; color: #0284c7;"></i>
                 </label>
 
                 <label style="display: flex; align-items: center; justify-content: space-between; background: ${data.metodoPago === 'TEST' ? '#eff6ff' : '#f8fafc'}; border: 2px solid ${data.metodoPago === 'TEST' ? 'var(--primary)' : '#e2e8f0'}; padding: 0.85rem 1.1rem; border-radius: var(--radius-md); cursor: pointer; transition: all var(--transition-fast);">
                   <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="radio" name="payment_method" value="TEST" ${data.metodoPago === 'TEST' ? 'checked' : ''} onchange="window.onPaymentMethodChange(this.value)" />
                     <div>
-                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Prueba Inmediata (Modo Demo)</strong>
-                      <span style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 600;">Activación simulada instantánea para testeo</span>
+                      <strong style="color: var(--text-main); font-size: 0.92rem; display: block;">Modo Demo / Prueba Inmediata</strong>
+                      <span style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 600;">Activación simulada para testear el sistema</span>
                     </div>
                   </div>
                   <i data-lucide="zap" style="width: 20px; height: 20px; color: var(--accent-amber);"></i>
@@ -233,16 +228,16 @@ export function renderCheckoutView() {
 
               </div>
 
-              <!-- FORMULARIO DE TARJETA SI SELECCIONA MERCADO PAGO -->
+              <!-- FORMULARIO DE TARJETA DE DÉBITO / CRÉDITO -->
               ${data.metodoPago === 'MERCADO_PAGO' ? `
                 <div style="background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 2rem;">
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.25rem;">
-                    <i data-lucide="credit-card" style="width: 18px; height: 18px; color: var(--primary);"></i>
-                    <strong style="font-size: 0.95rem; color: var(--text-main);">Ingresa los Datos de tu Tarjeta:</strong>
+                    <i data-lucide="shield-check" style="width: 18px; height: 18px; color: #16a34a;"></i>
+                    <strong style="font-size: 0.95rem; color: var(--text-main);">Ingresa los Datos de la Tarjeta para el Débito:</strong>
                   </div>
 
                   <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" style="font-size: 0.82rem;">Número de Tarjeta:</label>
+                    <label class="form-label" style="font-size: 0.82rem;">Número de Tarjeta (Débito o Crédito):</label>
                     <input 
                       type="text" 
                       id="card-number" 
@@ -256,7 +251,7 @@ export function renderCheckoutView() {
                   </div>
 
                   <div class="form-group" style="margin-bottom: 1rem;">
-                    <label class="form-label" style="font-size: 0.82rem;">Nombre del Titular (como figura en el plástico):</label>
+                    <label class="form-label" style="font-size: 0.82rem;">Nombre del Titular (como figura en la tarjeta):</label>
                     <input 
                       type="text" 
                       id="card-name" 
@@ -300,7 +295,7 @@ export function renderCheckoutView() {
 
                   <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 0.75rem;">
                     <div>
-                      <label class="form-label" style="font-size: 0.82rem;">DNI / Documento:</label>
+                      <label class="form-label" style="font-size: 0.82rem;">DNI del Titular:</label>
                       <input 
                         type="text" 
                         id="card-dni" 
@@ -312,58 +307,27 @@ export function renderCheckoutView() {
                     </div>
 
                     <div>
-                      <label class="form-label" style="font-size: 0.82rem;">Plan de Cuotas:</label>
+                      <label class="form-label" style="font-size: 0.82rem;">Cuotas:</label>
                       <select class="form-input" id="card-installments" onchange="cardData.installments = this.value">
-                        <option value="1">1 pago de $${sys.precio.toFixed(2)} USD</option>
-                        <option value="3">3 cuotas fijas de $${(sys.precio / 3).toFixed(2)} USD</option>
-                        <option value="6">6 cuotas fijas de $${(sys.precio / 6).toFixed(2)} USD</option>
+                        <option value="1">1 pago de $${sys.precio.toFixed(2)} USD (Débito / Crédito)</option>
+                        <option value="3">3 cuotas de $${(sys.precio / 3).toFixed(2)} USD</option>
+                        <option value="6">6 cuotas de $${(sys.precio / 6).toFixed(2)} USD</option>
                       </select>
                     </div>
                   </div>
                 </div>
               ` : ''}
 
-              <!-- DATOS DE TRANSFERENCIA SI SELECCIONA TRANSFERENCIA BANCARIA -->
-              ${data.metodoPago === 'TRANSFERENCIA' ? `
-                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius-md); padding: 1.25rem; margin-bottom: 1.5rem;">
-                  <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                      <i data-lucide="building-2" style="width: 20px; height: 20px; color: #16a34a;"></i>
-                      <strong style="font-size: 0.95rem; color: #166534;">Transfiere el importe a esta cuenta:</strong>
-                    </div>
-                    <span class="badge badge-green" style="font-size: 0.7rem;">Oficial Systems</span>
-                  </div>
-
-                  <div style="font-size: 0.85rem; color: #14532d; display: flex; flex-direction: column; gap: 0.45rem; margin-bottom: 1rem;">
-                    <div><strong>Titular:</strong> ${store.configPagos?.titular || 'Emilia Ponce'}</div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.4rem 0.65rem; border-radius: 6px;">
-                      <span><strong>Alias:</strong> <code style="font-weight: 800; font-size: 0.95rem; color: #065f46;">${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}</code></span>
-                      <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.alias_transferencia || 'emiliaponceg.mp'}', 'Alias')">
-                        📋 Copiar
-                      </button>
-                    </div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; background: #dcfce7; padding: 0.4rem 0.65rem; border-radius: 6px;">
-                      <span><strong>CVU / CBU:</strong> <code style="font-family: monospace; font-size: 0.85rem; color: #065f46;">${store.configPagos?.cvu_transferencia || '0000003100085492019482'}</code></span>
-                      <button type="button" class="btn btn-ghost btn-sm" style="padding: 0.2rem 0.5rem; font-size: 0.72rem; color: #166534;" onclick="window.copyPaymentText('${store.configPagos?.cvu_transferencia || '0000003100085492019482'}', 'CVU')">
-                        📋 Copiar
-                      </button>
-                    </div>
-                    <div><strong>Entidad:</strong> ${store.configPagos?.banco || 'Mercado Pago'}</div>
-                  </div>
-
-                  <!-- Campos de comprobante -->
-                  <div style="border-top: 1px dashed #86efac; padding-top: 0.9rem;">
-                    <label class="form-label" style="font-size: 0.82rem; color: #14532d;">N° de Operación / Comprobante de Transferencia:</label>
-                    <input 
-                      type="text" 
-                      id="transfer-ref" 
-                      class="form-input" 
-                      placeholder="Ej: Transf #948201 / Op 38472910" 
-                      value="${transferData.comprobante}"
-                      oninput="transferData.comprobante = this.value"
-                      required
-                    />
-                  </div>
+              <!-- BOTÓN DE MERCADO PAGO CHECKOUT PRO -->
+              ${data.metodoPago === 'MP_CHECKOUT' ? `
+                <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius-md); padding: 1.5rem; margin-bottom: 2rem; text-align: center;">
+                  <i data-lucide="smartphone" style="width: 32px; height: 32px; color: #0284c7; margin-bottom: 0.75rem;"></i>
+                  <h4 style="font-size: 1.05rem; font-weight: 700; color: #0369a1; margin-bottom: 0.4rem;">Pagar con Mercado Pago</h4>
+                  <p style="font-size: 0.85rem; color: #0284c7; margin-bottom: 1.25rem;">Se abrirá la pasarela oficial de Mercado Pago para que abones con dinero en cuenta, Débito o Crédito.</p>
+                  <button type="button" class="btn btn-primary" style="background: #0284c7; border-color: #0284c7; padding: 0.75rem 1.75rem;" onclick="window.handleMercadoPagoRedirect(${sys.id_sistema})">
+                    <i data-lucide="external-link"></i>
+                    Abrir Checkout Oficial de Mercado Pago ($${sys.precio.toFixed(2)})
+                  </button>
                 </div>
               ` : ''}
 
@@ -382,14 +346,14 @@ export function renderCheckoutView() {
           ` : ''}
 
           ${step === 3 ? `
-            <!-- PASO 3: CONFIRMACIÓN FINAL Y ACTIVACIÓN -->
+            <!-- PASO 3: CONFIRMACIÓN FINAL Y DÉBITO -->
             <div class="animate-fade-in">
               <span class="badge badge-success" style="margin-bottom: 0.5rem;">Paso Final</span>
               <h2 style="font-size: 1.6rem; font-weight: 800; margin-bottom: 0.35rem; color: var(--text-main);">
-                Confirmación de la Orden
+                Confirmación y Débito
               </h2>
               <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 2rem;">
-                Revisa los datos finales antes de activar el sistema para tu empresa.
+                Revisa los datos finales antes de efectuar el cobro y activar la licencia.
               </p>
 
               <!-- Tarjeta de Resumen Detallada -->
@@ -411,19 +375,14 @@ export function renderCheckoutView() {
                 </div>
 
                 <div style="display: flex; justify-content: space-between; padding-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 0.85rem; font-size: 0.9rem;">
-                  <span style="color: var(--text-dim);">Administrador de Empresa:</span>
-                  <span style="color: var(--text-main); font-weight: 600;">${user.nombre} (${user.email})</span>
-                </div>
-
-                <div style="display: flex; justify-content: space-between; padding-bottom: 0.85rem; border-bottom: 1px solid #e2e8f0; margin-bottom: 0.85rem; font-size: 0.9rem;">
                   <span style="color: var(--text-dim);">Medio de Pago:</span>
                   <span style="color: var(--primary); font-weight: 700;">
-                    ${data.metodoPago === 'MERCADO_PAGO' ? `💳 Tarjeta terminada en ${cardData.number.slice(-4) || '****'} (${cardData.installments || 1} pago/s)` : data.metodoPago === 'TRANSFERENCIA' ? `🏦 Transferencia Ref: ${transferData.comprobante || 'Confirmada'}` : '⚡ Modo Prueba / Demo'}
+                    ${data.metodoPago === 'MERCADO_PAGO' ? `💳 Tarjeta Débito/Crédito **** ${cardData.number.slice(-4) || '9010'}` : data.metodoPago === 'MP_CHECKOUT' ? '📱 Mercado Pago Saldo en Cuenta' : '⚡ Modo Prueba'}
                   </span>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; font-size: 1.1rem;">
-                  <strong style="color: var(--text-main);">Total a Abonar:</strong>
+                  <strong style="color: var(--text-main);">Total a Debitar:</strong>
                   <strong style="color: var(--primary-dark); font-size: 1.5rem; font-family: var(--font-mono);">$${sys.precio.toFixed(2)} ${sys.moneda}</strong>
                 </div>
 
@@ -436,8 +395,8 @@ export function renderCheckoutView() {
                   Paso Anterior
                 </button>
                 <button type="button" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1.05rem;" id="btn-confirm-pay" onclick="window.confirmFinalPurchase()">
-                  <i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i>
-                  Confirmar Pago y Activar Sistema
+                  <i data-lucide="credit-card" style="width: 18px; height: 18px;"></i>
+                  Cobrar y Activar Sistema Ahora ($${sys.precio.toFixed(2)})
                 </button>
               </div>
 
@@ -540,6 +499,30 @@ window.handleCardExpiryInput = (input) => {
   cardData.expiry = val;
 };
 
+window.handleMercadoPagoRedirect = async (sistemaId) => {
+  const sys = store.sistemas.find(s => s.id_sistema === sistemaId) || store.sistemas[0];
+  try {
+    const res = await fetch('http://localhost:3000/api/pagos/mercadopago/crear-preferencia', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id_usuario: store.currentUser?.id_usuario,
+        id_sistema: sys.id_sistema,
+        nombre_empresa: store.checkoutData.nombreEmpresa,
+        slug_empresa: store.checkoutData.slugEmpresa
+      })
+    });
+    const data = await res.json();
+    if (data.ok && (data.init_point || data.sandbox_init_point)) {
+      window.location.href = data.init_point || data.sandbox_init_point;
+    } else {
+      window.showToast('Error al conectar con Mercado Pago', 'error');
+    }
+  } catch (e) {
+    window.showToast(`Error: ${e.message}`, 'error');
+  }
+};
+
 window.validateStep2AndContinue = () => {
   const metodo = store.checkoutData.metodoPago;
 
@@ -566,56 +549,37 @@ window.validateStep2AndContinue = () => {
       window.showToast('Por favor ingresa el código CVV de seguridad (3 o 4 dígitos)', 'error');
       return;
     }
-  } else if (metodo === 'TRANSFERENCIA') {
-    const ref = document.getElementById('transfer-ref')?.value.trim() || transferData.comprobante;
-    if (!ref) {
-      window.showToast('Por favor ingresa el número o referencia del comprobante de transferencia', 'error');
-      return;
-    }
-    transferData.comprobante = ref;
   }
 
   store.setCheckoutStep(3);
-};
-
-window.copyPaymentText = (text, label) => {
-  navigator.clipboard.writeText(text).then(() => {
-    window.showToast(`📋 ¡${label} copiado al portapapeles!`, 'success');
-  }).catch(() => {
-    window.showToast(`Copiado: ${text}`, 'info');
-  });
 };
 
 window.confirmFinalPurchase = async () => {
   const btn = document.getElementById('btn-confirm-pay');
   if (btn) {
     btn.disabled = true;
-    btn.innerHTML = 'Procesando pago y creando base de datos...';
+    btn.innerHTML = 'Procesando débito con Mercado Pago...';
   }
 
   const sys = store.sistemas.find(s => s.id_sistema === store.selectedCheckoutSystemId) || store.sistemas[0];
-  const refPago = store.checkoutData.metodoPago === 'MERCADO_PAGO'
-    ? `Tarjeta **** ${cardData.number.slice(-4)}`
-    : store.checkoutData.metodoPago === 'TRANSFERENCIA'
-    ? `Transf ${transferData.comprobante}`
-    : 'Demo Test';
+  const refPago = `Tarjeta **** ${cardData.number.slice(-4) || '9010'}`;
 
   try {
     const lic = await store.buySystem({
       sistemaId: sys.id_sistema,
       nombreEmpresa: store.checkoutData.nombreEmpresa,
       slugEmpresa: store.checkoutData.slugEmpresa,
-      metodoPago: store.checkoutData.metodoPago,
+      metodoPago: 'MERCADO_PAGO',
       referenciaPago: refPago
     });
 
-    window.showToast(`🎉 ¡Pago aprobado! Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito.`, 'success');
+    window.showToast(`🎉 ¡Pago aprobado y debitado! Licencia para "${store.checkoutData.nombreEmpresa}" activada con éxito.`, 'success');
     store.setCurrentView('library');
   } catch (err) {
     window.showToast(`Error al procesar la compra: ${err.message}`, 'error');
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i> Confirmar Pago y Activar Sistema';
+      btn.innerHTML = '<i data-lucide="credit-card" style="width: 18px; height: 18px;"></i> Cobrar y Activar Sistema Ahora';
     }
   }
 };
