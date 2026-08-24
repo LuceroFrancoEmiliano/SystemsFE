@@ -486,8 +486,11 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
       try {
         const binRes = await fetch(`https://api.mercadopago.com/v1/payment_methods/search?public_key=${process.env.MP_PUBLIC_KEY || 'APP_USR-92bc25e4-07bc-45a4-a93a-5438ce2e0235'}&bin=${cleanNumber.substring(0, 6)}`);
         const binData = await binRes.json();
-        if (binData.results && binData.results.length > 0 && binData.results[0].id) {
-          paymentMethodId = binData.results[0].id;
+        if (binData.results && Array.isArray(binData.results)) {
+          const cardMethod = binData.results.find(x => ['credit_card', 'debit_card', 'prepaid_card'].includes(x.payment_type_id));
+          if (cardMethod && cardMethod.id) {
+            paymentMethodId = cardMethod.id;
+          }
         }
       } catch (e) {}
 
