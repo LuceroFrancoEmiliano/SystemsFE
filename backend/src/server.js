@@ -429,7 +429,13 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
     const userRes = await query('SELECT * FROM usuarios WHERE id_usuario = $1', [id_usuario]);
     const usuario = userRes.rows[0] || { nombre: cardholder_name || 'Cliente', email: 'cliente@systems.com' };
 
-    const monto = parseFloat(sistema.precio) || 1;
+    const rawPrecio = parseFloat(sistema.precio) || 0.5;
+    
+    // Mercado Pago Argentina opera en ARS y exige un monto mínimo de $150 ARS.
+    // Si el precio está en USD (ej: 0.50 USD), lo convertimos a pesos ARS ($650 ARS):
+    let transactionAmount = sistema.moneda === 'USD' 
+      ? Math.max(150, Math.round(rawPrecio * 1300))
+      : Math.max(150, Math.round(rawPrecio));
 
     // Limpiar datos de tarjeta
     const cleanNumber = String(card_number || '').replace(/\D/g, '');
@@ -474,9 +480,9 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
         const paymentApi = new Payment(client);
         const paymentResult = await paymentApi.create({
           body: {
-            transaction_amount: monto,
+            transaction_amount: transactionAmount,
             token: tokenRes.id,
-            description: `Licencia - ${sistema.titulo} (${nombre_empresa})`,
+            description: `Licencia Software - ${sistema.titulo} (${nombre_empresa})`,
             installments: parseInt(installments, 10) || 1,
             payment_method_id: tokenRes.payment_method?.id || (cleanNumber.startsWith('4') ? 'visa' : 'master'),
             payer: {
@@ -494,6 +500,7 @@ app.post('/api/pagos/mercadopago/procesar-tarjeta-directa', async (req, res) => 
         }
 
         paymentId = String(paymentResult.id || paymentId);
+        console.log(`🎉 Cobro exitoso con Mercado Pago Payment API: $${transactionAmount} ARS - ID: ${paymentId}`);
       } catch (errPay) {
         console.error('Aviso cobro MP API:', errPay);
       }
