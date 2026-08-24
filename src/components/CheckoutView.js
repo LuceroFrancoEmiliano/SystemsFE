@@ -544,20 +544,30 @@ window.validateStep2AndContinue = () => {
   const metodo = store.checkoutData.metodoPago;
 
   if (metodo === 'MERCADO_PAGO') {
-    if (!cardData.number || cardData.number.replace(/\s/g, '').length < 15) {
-      window.showToast('Por favor ingresa un número de tarjeta válido (16 dígitos)', 'error');
+    const numInput = document.getElementById('card-number')?.value.trim() || cardData.number;
+    const expInput = document.getElementById('card-expiry')?.value.trim() || cardData.expiry;
+    const cvvInput = document.getElementById('card-cvv')?.value.trim() || cardData.cvv;
+    const nameInput = document.getElementById('card-name')?.value.trim() || cardData.name;
+
+    cardData.number = numInput;
+    cardData.expiry = expInput;
+    cardData.cvv = cvvInput;
+    cardData.name = nameInput;
+
+    if (!numInput || numInput.replace(/\s/g, '').length < 13) {
+      window.showToast('Por favor ingresa un número de tarjeta válido', 'error');
       return;
     }
-    if (!cardData.expiry || cardData.expiry.length < 5) {
+    if (!expInput || expInput.length < 4) {
       window.showToast('Por favor ingresa el vencimiento (MM/AA)', 'error');
       return;
     }
-    if (!cardData.cvv || cardData.cvv.length < 3) {
-      window.showToast('Por favor ingresa el código CVV de seguridad', 'error');
+    if (!cvvInput || cvvInput.length < 3) {
+      window.showToast('Por favor ingresa el código CVV de seguridad (3 o 4 dígitos)', 'error');
       return;
     }
   } else if (metodo === 'TRANSFERENCIA') {
-    const ref = document.getElementById('transfer-ref')?.value.trim();
+    const ref = document.getElementById('transfer-ref')?.value.trim() || transferData.comprobante;
     if (!ref) {
       window.showToast('Por favor ingresa el número o referencia del comprobante de transferencia', 'error');
       return;
